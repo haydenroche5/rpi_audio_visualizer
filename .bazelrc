@@ -1,4 +1,5 @@
 build --compiler=compiler
+build --cxxopt=--std=c++14
 
 build:armv7hf --crosstool_top=@murtis_bazel_compilers//compilers/arm_compiler:toolchain
 build:armv7hf --host_crosstool_top=@bazel_tools//tools/cpp:toolchain
