@@ -10,7 +10,6 @@ cc_library(
         "rpi-rgb-led-matrix/include/led-matrix-c.h",
         "rpi-rgb-led-matrix/include/led-matrix.h",
         "rpi-rgb-led-matrix/include/pixel-mapper.h",
-        "rpi-rgb-led-matrix/include/stuff.txt",
         "rpi-rgb-led-matrix/include/threaded-canvas-manipulator.h",
         "rpi-rgb-led-matrix/include/thread.h",
         "rpi-rgb-led-matrix/include/transformer.h",
