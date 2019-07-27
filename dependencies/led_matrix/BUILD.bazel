@@ -1,0 +1,20 @@
+cc_library(
+    name = "led_matrix",
+    srcs = ["rpi-rgb-led-matrix/lib/librgbmatrix.a"],
+    hdrs = [
+        "rpi-rgb-led-matrix/include/canvas.h",
+        "rpi-rgb-led-matrix/include/content-streamer.h",
+        "rpi-rgb-led-matrix/include/deprecated-transformer.h",
+        "rpi-rgb-led-matrix/include/gpio.h",
+        "rpi-rgb-led-matrix/include/graphics.h",
+        "rpi-rgb-led-matrix/include/led-matrix-c.h",
+        "rpi-rgb-led-matrix/include/led-matrix.h",
+        "rpi-rgb-led-matrix/include/pixel-mapper.h",
+        "rpi-rgb-led-matrix/include/stuff.txt",
+        "rpi-rgb-led-matrix/include/threaded-canvas-manipulator.h",
+        "rpi-rgb-led-matrix/include/thread.h",
+        "rpi-rgb-led-matrix/include/transformer.h",
+    ],
+    linkopts = ["-pthread"],
+    visibility = ["//visibility:public"],
+)
