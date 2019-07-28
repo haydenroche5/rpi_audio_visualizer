@@ -1,0 +1,20 @@
+cc_library(
+    name = "matrix",
+    srcs = [
+        "src/rendering/Color.cpp",
+        "src/rendering/Pixel.cpp",
+        "src/rendering/Scene.cpp",
+        "src/shapes/Shape.cpp",
+    ],
+    hdrs = [
+        "include/rendering/Color.hpp",
+        "include/rendering/Coordinate.hpp",
+        "include/rendering/Pixel.hpp",
+        "include/rendering/Scene.hpp",
+        "include/shapes/Shape.hpp",
+    ],
+    deps = [
+        "//dependencies/led_matrix",
+    ],
+    visibility = ["//visibility:public"],
+)
