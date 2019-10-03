@@ -1,0 +1,2 @@
+- Create a CallbackManager class which inherits from CallbackInterface.
+- Create an AudioManager class which has an InterfaceCallbackStream.

@@ -1,6 +1,8 @@
-bazel-bin
-bazel-genfiles
-bazel-matrix
-bazel-out
-bazel-testlogs
-bin
+bin/build/
+CMakeCache.txt
+CMakeFiles/
+Makefile
+*.sublime-project
+*.sublime-workspace
+cmake_install.cmake
+plotting_venv/
