@@ -4,15 +4,15 @@ list(APPEND srcs
 
 find_library(libfftw3_omp fftw3_omp)
 if (NOT libfftw3_omp)
-    messsage(FATAL_ERROR "Could not find libfftw3_omp.")
+    message(FATAL_ERROR "Could not find libfftw3_omp.")
 endif ()
 find_library(libfftw3 fftw3)
 if (NOT libfftw3)
-    messsage(FATAL_ERROR "Could not find libfftw3.")
+    message(FATAL_ERROR "Could not find libfftw3.")
 endif ()
 find_library(libm m)
 if (NOT libm)
-    messsage(FATAL_ERROR "Could not find libm.")
+    message(FATAL_ERROR "Could not find libm.")
 endif ()
 list(APPEND link_libs ${libfftw3_omp} ${libfftw3} ${libm})
 
