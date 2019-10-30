@@ -1,8 +1,10 @@
 cmake_minimum_required(VERSION 3.10)
 
 project(matrix LANGUAGES CXX C)
+set(CMAKE_CXX_STANDARD 17)
 
-set(MATRIX_ROOT ${CMAKE_SOURCE_DIR})
+find_package(Threads REQUIRED)
+
 set(DEPS_ROOT ${CMAKE_SOURCE_DIR}/dependencies)
 
 include(${DEPS_ROOT}/external.cmake)

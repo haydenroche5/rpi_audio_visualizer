@@ -1,39 +1,46 @@
 #include "Recorder.hpp"
+#include <cstring>
 
 namespace matrix
 {
 namespace audio
 {
-Recorder::Recorder(QueueT &aQueue) : theQueue{aQueue} {}
+Recorder::Recorder(AudioQueueT &aQueue, bool aIsStreamingMode,
+                   size_t aSecondsToRecord)
+    : theQueue{aQueue}, theIsStreamingMode{aIsStreamingMode},
+      theSamplesToRecord{aSecondsToRecord * SAMPLE_RATE}
+{
+    // TODO: shouldn't allow aSecondsToRecord to be non-zero if aIsStreamingMode
+    // is true
+}
+
+bool Recorder::isDoneRecording() const { return theIsDoneRecording; }
 
 int Recorder::paCallbackFun(const void *aInputBuffer, void *, unsigned long,
                             const PaStreamCallbackTimeInfo *,
                             PaStreamCallbackFlags)
 {
-    const float *myCurrentSamplePtr{static_cast<const float *>(aInputBuffer)};
-
-    if (aInputBuffer == nullptr)
+    if (theIsDoneRecording)
     {
-        for (size_t i{0}; i < FRAMES_PER_BUFFER; ++i)
-        {
-            for (size_t j{0}; j < CHANNELS; ++j)
-            {
-                theCurrentBuffer[i + j] = 0;
-            }
-        }
-    }
-    else
-    {
-        for (size_t i{0}; i < FRAMES_PER_BUFFER; ++i)
-        {
-            for (size_t j{0}; j < CHANNELS; ++j)
-            {
-                theCurrentBuffer[i + j] = *myCurrentSamplePtr++;
-            }
-        }
+        return paComplete;
     }
 
+    std::memcpy(theCurrentBuffer.data(),
+                static_cast<const float *>(aInputBuffer), SAMPLES_PER_BUFFER);
     theQueue.push(theCurrentBuffer);
+
+    // TODO: Stream vs. non-stream should be a compile time thing, i.e. set with
+    // a template parameter, and then this code can be constexpr-if'ed
+    if (!theIsStreamingMode)
+    {
+        theSamplesRecorded += SAMPLES_PER_BUFFER;
+
+        if (theSamplesRecorded >= theSamplesToRecord)
+        {
+            theIsDoneRecording = true;
+            return paComplete;
+        }
+    }
 
     return paContinue;
 }

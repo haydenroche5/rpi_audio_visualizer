@@ -1,12 +1,14 @@
 list(APPEND audio_srcs
-    src/Recorder.cpp
-    src/RecorderStream.cpp
-    src/SamplePrinter.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/FftMagnitudePrinter.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/Recorder.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/RecorderStream.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/SampleCollector.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/SamplePrinter.cpp
 )
 
 add_library(audio STATIC ${audio_srcs})
-target_include_directories(audio PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include ${Boost_INCLUDE_DIRS})
-target_link_libraries(audio portaudiocpp)
+target_include_directories(audio INTERFACE ${CMAKE_CURRENT_LIST_DIR}/include PRIVATE include/audio ${Boost_INCLUDE_DIRS})
+target_link_libraries(audio portaudiocpp fftwpp)
 
 # target_include_directories(  )
 
