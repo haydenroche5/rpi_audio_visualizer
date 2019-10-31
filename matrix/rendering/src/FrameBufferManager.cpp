@@ -1,4 +1,5 @@
 #include "FrameBufferManager.hpp"
+#include <iostream>
 
 namespace matrix
 {
@@ -11,6 +12,15 @@ FrameBufferManager::FrameBufferManager()
                                                   // declaration?
       theNextFrameBuffer{&theFrameBuffers[1]}, theNextGradientIdx{0}
 {
+    for (size_t i{0}; i < NUM_GRADIENTS; ++i)
+    {
+        std::cout << "Gradient #" << i << " is:\n";
+        for (const auto myColor : GRADIENTS[i])
+        {
+            std::cout << "(" << +myColor.getRed() << ", " << +myColor.getGreen()
+                      << ", " << +myColor.getBlue() << ")\n";
+        }
+    }
 }
 
 void FrameBufferManager::drawNextGradient()
@@ -38,15 +48,15 @@ void FrameBufferManager::drawNextGradient()
 
 void FrameBufferManager::swapBuffers()
 {
-    // auto myTempFrameBuffer{theCurrentFrameBuffer};
-    // theCurrentFrameBuffer = theNextFrameBuffer;
-    // theNextFrameBuffer = myTempFrameBuffer;
     theCurrentFrameBuffer.swap(theNextFrameBuffer);
 }
 
 std::shared_ptr<const FrameBufferT>
 FrameBufferManager::getCurrentFrameBuffer() const
 {
+    // std::cout << "theCurrentFrameBuffer: 0x" << std::hex
+    //           << theCurrentFrameBuffer.get() << std::dec << std::endl;
+
     return theCurrentFrameBuffer;
 }
 } // namespace rendering

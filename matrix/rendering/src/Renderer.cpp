@@ -1,13 +1,15 @@
 #include "Renderer.hpp"
+#include <iostream>
+#include <unistd.h>
 
 namespace matrix
 {
 namespace rendering
 {
 Renderer::Renderer(rgb_matrix::Canvas *aCanvas,
-                   std::shared_ptr<const FrameBufferT> aFrameBuffer)
-    : rgb_matrix::ThreadedCanvasManipulator(aCanvas), theFrameBuffer{
-                                                          aFrameBuffer}
+                   FrameBufferManager &aFrameBufferManager)
+    : rgb_matrix::ThreadedCanvasManipulator(aCanvas), theFrameBufferManager{
+                                                          aFrameBufferManager}
 {
 }
 
@@ -15,15 +17,21 @@ void Renderer::Run()
 {
     while (running())
     {
+        auto myFrameBuffer{theFrameBufferManager.getCurrentFrameBuffer()};
+        // std::cout << "myFrameBuffer: 0x" << std::hex << myFrameBuffer.get()
+        //           << std::dec << std::endl;
         for (size_t i{0}; i < NUM_ROWS; ++i)
         {
             for (size_t j{0}; j < NUM_COLS; ++j)
             {
-                canvas()->SetPixel(i, j, (*theFrameBuffer)[i][j].getRed(),
-                                   (*theFrameBuffer)[i][j].getGreen(),
-                                   (*theFrameBuffer)[i][j].getBlue());
+                canvas()->SetPixel(i, j, (*myFrameBuffer)[i][j].getRed(),
+                                   (*myFrameBuffer)[i][j].getGreen(),
+                                   (*myFrameBuffer)[i][j].getBlue());
             }
         }
+        theFrameBufferManager.drawNextGradient();
+        theFrameBufferManager.swapBuffers();
+        sleep(1);
     }
 }
 } // namespace rendering

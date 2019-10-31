@@ -40,16 +40,15 @@ int main(int argc, char *argv[])
     RGBMatrix *myMatrix{
         CreateMatrixFromOptions(myMatrixOptions, myRuntimeOptions)};
 
-    if (myMatrix == NULL)
+    if (myMatrix == nullptr)
         return 1;
-
-    printf("Size: %dx%d. Hardware gpio mapping: %s\n", myMatrix->width(),
-           myMatrix->height(), myMatrixOptions.hardware_mapping);
 
     Canvas *myCanvas{myMatrix};
     FrameBufferManager myFrameBufferManager{};
+    // auto myCurrentFrameBufferFunc{std::bind(
+    //     &FrameBufferManager::getCurrentFrameBuffer, myFrameBufferManager)};
     std::unique_ptr<Renderer> myRenderer{
-        new Renderer(myCanvas, myFrameBufferManager.getCurrentFrameBuffer())};
+        new Renderer(myCanvas, myFrameBufferManager)};
 
     signal(SIGTERM, InterruptHandler);
     signal(SIGINT, InterruptHandler);
@@ -59,10 +58,10 @@ int main(int argc, char *argv[])
     printf("Press <CTRL-C> to exit and reset LEDs\n");
     while (!InterruptReceived)
     {
-        myFrameBufferManager.drawNextGradient();
+        // myFrameBufferManager.drawNextGradient();
         sleep(
             1); // Time doesn't really matter. The syscall will be interrupted.
-        myFrameBufferManager.swapBuffers();
+        // myFrameBufferManager.swapBuffers();
     }
 
     delete myCanvas;

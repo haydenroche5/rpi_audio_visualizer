@@ -20,7 +20,7 @@ static constexpr std::array<Color, NUM_COLORS> createGradient()
     uint8_t myRed{R1};
     uint8_t myGreen{G1};
     uint8_t myBlue{B1};
-    for (size_t i{1}; i < NUM_COLORS - 2; ++i)
+    for (size_t i{1}; i < NUM_COLORS - 1; ++i)
     {
         if (R1 < R2)
         {
