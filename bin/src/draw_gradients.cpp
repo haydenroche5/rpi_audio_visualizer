@@ -3,15 +3,10 @@
 #include "rendering/GradientCycler.hpp"
 #include "rendering/Renderer.hpp"
 
-#include <assert.h>
+#include <chrono>
 #include <getopt.h>
-#include <limits.h>
-#include <math.h>
 #include <signal.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
+#include <thread>
 
 using namespace rgb_matrix;
 using namespace matrix::rendering;
@@ -46,7 +41,7 @@ int main(int argc, char *argv[])
     while (!InterruptReceived)
     {
         myRenderer.renderNextFrame();
-        sleep(1);
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
     }
 
     printf("\%s. Exiting.\n",

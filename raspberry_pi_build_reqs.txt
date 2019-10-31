@@ -9,3 +9,6 @@
 6) Was able to run cmake successfully after those steps.
 
 Couldn't make, because librgbmatrix.a was compiled on my laptop, not the pi. Built it on the pi and tried again. This time was able to make draw_gradients.
+
+To get virtualenv creation to work, needed to do: sudo apt-get install python3-venv. Then, installing the requirements.txt failed, so did: sudo apt install libglib2.0-dev. That froze the machine so I gave up.
+
