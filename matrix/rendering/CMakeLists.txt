@@ -1,7 +1,6 @@
 list(APPEND rendering_srcs
     ${CMAKE_CURRENT_LIST_DIR}/src/Color.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/src/FrameBufferManager.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/src/Renderer.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/GradientCycler.cpp
 )
 
 add_library(rendering STATIC ${rendering_srcs})

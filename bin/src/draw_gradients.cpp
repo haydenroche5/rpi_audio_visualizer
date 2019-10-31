@@ -1,6 +1,6 @@
 #include "led_matrix/led-matrix.h"
 
-#include "rendering/FrameBufferManager.hpp"
+#include "rendering/GradientCycler.hpp"
 #include "rendering/Renderer.hpp"
 
 #include <assert.h>
@@ -21,7 +21,7 @@ static void InterruptHandler(int signo) { InterruptReceived = true; }
 
 int main(int argc, char *argv[])
 {
-    RGBMatrix::Options myMatrixOptions;
+    rgb_matrix::RGBMatrix::Options myMatrixOptions;
     rgb_matrix::RuntimeOptions myRuntimeOptions;
 
     // These are the defaults when no command-line flags are given.
@@ -37,34 +37,17 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    RGBMatrix *myMatrix{
-        CreateMatrixFromOptions(myMatrixOptions, myRuntimeOptions)};
-
-    if (myMatrix == nullptr)
-        return 1;
-
-    Canvas *myCanvas{myMatrix};
-    FrameBufferManager myFrameBufferManager{};
-    // auto myCurrentFrameBufferFunc{std::bind(
-    //     &FrameBufferManager::getCurrentFrameBuffer, myFrameBufferManager)};
-    std::unique_ptr<Renderer> myRenderer{
-        new Renderer(myCanvas, myFrameBufferManager)};
+    Renderer<GradientCycler> myRenderer{myMatrixOptions, myRuntimeOptions};
 
     signal(SIGTERM, InterruptHandler);
     signal(SIGINT, InterruptHandler);
 
-    myRenderer->Start(); // Start doing things.
-
     printf("Press <CTRL-C> to exit and reset LEDs\n");
     while (!InterruptReceived)
     {
-        // myFrameBufferManager.drawNextGradient();
-        sleep(
-            1); // Time doesn't really matter. The syscall will be interrupted.
-        // myFrameBufferManager.swapBuffers();
+        myRenderer.renderNextFrame();
+        sleep(1);
     }
-
-    delete myCanvas;
 
     printf("\%s. Exiting.\n",
            InterruptReceived ? "Received CTRL-C" : "Timeout reached");

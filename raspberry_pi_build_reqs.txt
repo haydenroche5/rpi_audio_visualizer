@@ -1,0 +1,11 @@
+1) Boost
+2) spdlog
+3) CMake error: "Could not find libasound."
+    sudo apt-get install libasound-dev
+4) Same thing for libjack.
+    sudo apt-get install libjack-dev
+5) Same thing for libfftw3_omp.
+    Download fftw3 tar ball from FFTW website. Put in /opt, unpack, sudo ./configure --enable-openmp && make && make install.
+6) Was able to run cmake successfully after those steps.
+
+Couldn't make, because librgbmatrix.a was compiled on my laptop, not the pi. Built it on the pi and tried again. This time was able to make draw_gradients.
