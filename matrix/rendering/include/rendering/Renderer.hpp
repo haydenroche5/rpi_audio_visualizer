@@ -2,10 +2,9 @@
 
 #include "Defs.hpp"
 #include "led_matrix/led-matrix.h"
-#include <chrono>
+#include <boost/thread.hpp>
 #include <memory>
 #include <stdexcept>
-#include <thread>
 
 namespace matrix
 {
@@ -44,20 +43,12 @@ public:
 
     void renderNextFrame()
     {
-        // auto t1 = std::chrono::high_resolution_clock::now();
-        // theDrawer.draw();
         theMatrix->SwapOnVSync(theNextFrameBuffers[theNextFrameBufferIdx]);
         ++theNextFrameBufferIdx;
         if (theNextFrameBufferIdx == NUM_FRAME_BUFFERS)
         {
             theNextFrameBufferIdx = 0;
         }
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        // auto t2 = std::chrono::high_resolution_clock::now();
-        // auto duration =
-        //     std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1)
-        //         .count();
-        // std::cout << "duration: " << duration << std::endl;
     }
 }; // namespace rendering
 } // namespace rendering

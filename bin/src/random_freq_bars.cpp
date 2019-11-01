@@ -39,7 +39,7 @@ void genRandomPositions(FreqBarsUpdateQueueT<NUM_BARS> &aQueue)
                 myNewPositions[i] = myDist63(myRNG);
             }
             aQueue.push(myNewPositions);
-            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+            boost::this_thread::sleep(boost::posix_time::milliseconds(8000));
             // auto t2 = std::chrono::high_resolution_clock::now();
             // auto duration =
             //     std::chrono::duration_cast<std::chrono::microseconds>(t2 -
@@ -52,11 +52,12 @@ void genRandomPositions(FreqBarsUpdateQueueT<NUM_BARS> &aQueue)
     }
 }
 
-template <typename DrawerT> void processUpdates(DrawerT &aDrawer)
+template <typename DrawerT> void animate(DrawerT &aDrawer)
 {
     while (true)
     {
-        aDrawer.processUpdates();
+        aDrawer.animate();
+        boost::this_thread::sleep(boost::posix_time::milliseconds(100));
     }
 }
 
@@ -92,7 +93,7 @@ int main(int argc, char *argv[])
                                               myRuntimeOptions};
     myDrawer.setNextFrameBuffers(myRenderer.getNextFrameBuffers());
 
-    boost::thread myFreqBarsThread(processUpdates<DrawerT>, std::ref(myDrawer));
+    boost::thread myFreqBarsThread(animate<DrawerT>, std::ref(myDrawer));
     boost::thread myRandomPosGenThread(genRandomPositions<NUM_BARS>,
                                        std::ref(myQueue));
 
