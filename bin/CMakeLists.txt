@@ -58,3 +58,5 @@ target_link_libraries(draw_gradients
     led_matrix
     rendering
 )
+
+add_executable(bar_idx_test ${src_dir}/bar_idx_test.cpp)

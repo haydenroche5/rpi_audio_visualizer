@@ -9,7 +9,7 @@ namespace matrix
 {
 namespace rendering
 {
-template <typename DrawerT> class Renderer
+template <typename DrawerT, typename... DrawerArgsT> class Renderer
 {
 private:
     std::unique_ptr<rgb_matrix::RGBMatrix> theMatrix;
@@ -18,10 +18,13 @@ private:
 
 public:
     Renderer(rgb_matrix::RGBMatrix::Options aMatrixOptions,
-             rgb_matrix::RuntimeOptions aRuntimeOptions)
+             rgb_matrix::RuntimeOptions aRuntimeOptions,
+             DrawerArgsT &&... aDrawerArgs)
         : theMatrix{rgb_matrix::CreateMatrixFromOptions(aMatrixOptions,
                                                         aRuntimeOptions)},
-          theNextFrameBuffer{nullptr}, theDrawer{DrawerT()}
+          theNextFrameBuffer{nullptr}, theDrawer{
+                                           DrawerT(std::forward<DrawerArgsT>(
+                                               aDrawerArgs)...)}
     {
         if (theMatrix == nullptr)
         {

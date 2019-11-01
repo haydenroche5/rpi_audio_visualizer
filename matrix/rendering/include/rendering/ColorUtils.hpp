@@ -7,9 +7,11 @@ namespace matrix
 {
 namespace rendering
 {
+template <size_t NUM_COLORS> using GradientT = std::array<Color, NUM_COLORS>;
+
 template <uint8_t R1, uint8_t G1, uint8_t B1, uint8_t R2, uint8_t G2,
           uint8_t B2, size_t NUM_COLORS>
-static constexpr std::array<Color, NUM_COLORS> createGradient()
+static constexpr GradientT<NUM_COLORS> createGradient()
 {
     auto myRedStep{std::abs(R1 - R2) / (NUM_COLORS - 1)};
     auto myGreenStep{std::abs(G1 - G2) / (NUM_COLORS - 1)};
@@ -54,5 +56,8 @@ static constexpr std::array<Color, NUM_COLORS> createGradient()
 
     return myGradientColors;
 }
+
+static constexpr Color CLEAR_MASK{0x00, 0x00, 0x00};
+static constexpr Color KEEP_MASK{0xFF, 0xFF, 0xFF};
 } // namespace rendering
 } // namespace matrix
