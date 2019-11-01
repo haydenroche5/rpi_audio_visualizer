@@ -7,6 +7,7 @@
 #include <boost/thread.hpp>
 #include <chrono>
 #include <getopt.h>
+#include <iostream>
 #include <random>
 #include <signal.h>
 #include <thread>
@@ -32,7 +33,7 @@ void genRandomPositions(FreqBarsUpdateQueueT<NUM_BARS> &aQueue)
             myNewPositions[i] = myDist63(myRNG);
         }
         aQueue.push(myNewPositions);
-        std::this_thread::sleep_for(std::chrono::milliseconds(300));
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 }
 
@@ -56,7 +57,7 @@ int main(int argc, char *argv[])
 
     static constexpr size_t NUM_BARS{16};
     static constexpr size_t NUM_COLORS_PER_GRADIENT{8};
-    static constexpr size_t ANIMATION_SPEED{1};
+    static constexpr size_t ANIMATION_SPEED{4};
 
     FreqBarsUpdateQueueT<NUM_BARS> myQueue{FREQ_BAR_UPDATE_QUEUE_DEPTH};
     Renderer<FreqBarsRandom<NUM_BARS, NUM_COLORS_PER_GRADIENT, ANIMATION_SPEED>>

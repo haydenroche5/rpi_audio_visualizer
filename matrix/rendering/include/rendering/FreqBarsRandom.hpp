@@ -2,6 +2,7 @@
 
 #include "ColorUtils.hpp"
 #include "Defs.hpp"
+#include <iostream>
 #include <stdexcept>
 
 namespace matrix
@@ -17,8 +18,7 @@ namespace rendering
 // false.
 // TODO: Scratch that. Max number of frames per animation is 64. Maintain a
 // frame buffer queue of max depth 64.
-template <size_t NUM_BARS, size_t NUM_COLORS_PER_GRADIENT,
-          size_t ANIMATION_SPEED>
+template <size_t NUM_BARS, size_t NUM_COLORS_PER_GRADIENT, int ANIMATION_SPEED>
 class FreqBarsRandom
 {
     static constexpr size_t NUM_GRADIENTS{4};
@@ -37,7 +37,8 @@ class FreqBarsRandom
 
 private:
     static constexpr size_t BAR_WIDTH{NUM_COLS / NUM_BARS};
-    static constexpr size_t COLOR_HEIGHT{NUM_ROWS / NUM_COLORS_PER_GRADIENT};
+    static constexpr size_t COLOR_HEIGHT{
+        NUM_ROWS / (NUM_COLORS_PER_GRADIENT * NUM_GRADIENTS)};
 
     static constexpr auto ROW_COLORS{
         createRowColors<NUM_GRADIENTS, NUM_COLORS_PER_GRADIENT>()};
@@ -92,10 +93,14 @@ public:
             throw std::runtime_error("FreqBarsRandom::draw called while "
                                      "next frame buffers is nullptr.");
         }
+
         if (!theAnimating)
         {
-            if (theUpdateQueue.read_available())
+            auto myNumUpdatesAvailable{theUpdateQueue.read_available()};
+            if (myNumUpdatesAvailable)
             {
+                std::cout << "myNumUpdatesAvailable: " << myNumUpdatesAvailable
+                          << std::endl;
                 theNextPositions = theUpdateQueue.front();
                 theUpdateQueue.pop();
                 theAnimating = true;
@@ -110,48 +115,63 @@ public:
 
         if (theAnimating)
         {
+            std::array<int, NUM_BARS> myDistances{};
+            for (size_t i{0}; i < NUM_BARS; ++i)
+            {
+                auto myDistance{theNextPositions[i] -
+                                theCurrentBarPositions[i]};
+                myDistances[i] = myDistance;
+
+                if (myDistance == 0)
+                {
+                    theBarsAnimating[i] = false;
+                    continue;
+                }
+
+                if (myDistance < 0)
+                {
+                    theCurrentBarPositions[i] -=
+                        std::max(myDistance, ANIMATION_SPEED);
+                }
+                else
+                {
+                    theCurrentBarPositions[i] +=
+                        std::min(myDistance, ANIMATION_SPEED);
+                }
+            }
+
             auto myRowColorIdx{0};
             auto myRowColor{ROW_COLORS[myRowColorIdx]};
             for (int y{0}; y < NUM_ROWS; y += COLOR_HEIGHT)
             {
-                for (int y2{y}; y2 < COLOR_HEIGHT; ++y2)
+                for (int myYOffset{0}; myYOffset < COLOR_HEIGHT; ++myYOffset)
                 {
                     size_t myBarIdx{0};
-                    auto myCurrentBarPos{theCurrentBarPositions[myBarIdx]};
-                    auto myNextBarPos{theNextPositions[myBarIdx]};
                     for (int x{0}; x < NUM_COLS; x += BAR_WIDTH)
                     {
-                        int myDistance{myNextBarPos - myCurrentBarPos};
-                        if (myDistance == 0)
+                        if ((y + myYOffset) >= theCurrentBarPositions[myBarIdx])
                         {
-                            theBarsAnimating[myBarIdx] = false;
-                            // turn pixel on?
-                            continue;
-                        }
-                        else if (myDistance < 0)
-                        {
-                            for (int x2{x}; x2 < BAR_WIDTH; ++x2)
+                            for (int myXOffset{0}; myXOffset < BAR_WIDTH;
+                                 ++myXOffset)
                             {
-                                theNextFrameBuffer->SetPixel(x2, y2, 0, 0, 0);
+                                theNextFrameBuffer->SetPixel(
+                                    x + myXOffset, y + myYOffset, 0, 0, 0);
                             }
-                            --theCurrentBarPositions[myBarIdx];
                         }
                         else
                         {
-                            for (int x2{x}; x2 < BAR_WIDTH; ++x2)
+                            for (int myXOffset{0}; myXOffset < BAR_WIDTH;
+                                 ++myXOffset)
                             {
                                 theNextFrameBuffer->SetPixel(
-                                    x2, y2, myRowColor.getRed(),
-                                    myRowColor.getGreen(),
+                                    x + myXOffset, y + myYOffset,
+                                    myRowColor.getRed(), myRowColor.getGreen(),
                                     myRowColor.getBlue());
                             }
-                            ++theCurrentBarPositions[myBarIdx];
                         }
 
                         ++myBarIdx; // We can determine these without using the
                                     // extra x2/y2 loops
-                        myCurrentBarPos = theCurrentBarPositions[myBarIdx];
-                        myNextBarPos = theNextPositions[myBarIdx];
                     }
                 }
                 ++myRowColorIdx; // We can determine these without using the
