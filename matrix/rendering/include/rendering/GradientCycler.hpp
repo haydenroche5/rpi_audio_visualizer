@@ -40,6 +40,7 @@ public:
     GradientCycler();
     GradientCycler(FrameBufferT *aFrameBuffer);
     void draw();
+    void setNextFrameBuffer(FrameBufferT *aBuffer);
 };
 } // namespace rendering
 } // namespace matrix

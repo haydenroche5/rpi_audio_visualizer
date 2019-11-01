@@ -9,11 +9,6 @@ GradientCycler::GradientCycler()
 {
 }
 
-GradientCycler::GradientCycler(FrameBufferT *aFrameBuffer)
-    : theNextFrameBuffer{aFrameBuffer}, theNextGradientIdx{0}
-{
-}
-
 void GradientCycler::draw()
 {
     if (theNextGradientIdx == NUM_GRADIENTS)
@@ -38,6 +33,11 @@ void GradientCycler::draw()
         }
     }
     ++theNextGradientIdx;
+}
+
+void GradientCycler::setNextFrameBuffer(FrameBufferT *aBuffer)
+{
+    theNextFrameBuffer = aBuffer;
 }
 } // namespace rendering
 } // namespace matrix

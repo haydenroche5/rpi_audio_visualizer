@@ -57,7 +57,26 @@ static constexpr GradientT<NUM_COLORS> createGradient()
     return myGradientColors;
 }
 
-static constexpr Color CLEAR_MASK{0x00, 0x00, 0x00};
-static constexpr Color KEEP_MASK{0xFF, 0xFF, 0xFF};
+template <size_t NUM_GRADIENTS, size_t NUM_COLORS_PER_GRADIENT>
+constexpr std::array<Color, NUM_GRADIENTS * NUM_COLORS_PER_GRADIENT>
+createRowColors()
+{
+    std::array<GradientT<NUM_COLORS_PER_GRADIENT>, NUM_GRADIENTS> myGradients{
+        createGradient<0, 0, 0, 0, 128, 0, NUM_COLORS_PER_GRADIENT>(),
+        createGradient<0, 129, 0, 0, 255, 0, NUM_COLORS_PER_GRADIENT>(),
+        createGradient<1, 255, 0, 255, 255, 0, NUM_COLORS_PER_GRADIENT>(),
+        createGradient<255, 254, 0, 255, 0, 0, NUM_COLORS_PER_GRADIENT>()};
+
+    std::array<Color, NUM_GRADIENTS * NUM_COLORS_PER_GRADIENT> myRowColors{};
+    for (size_t i{0}; i < NUM_GRADIENTS; ++i)
+    {
+        for (size_t j{0}; j < NUM_COLORS_PER_GRADIENT; ++j)
+        {
+            myRowColors[i * NUM_COLORS_PER_GRADIENT + j] = myGradients[i][j];
+        }
+    }
+
+    return myRowColors;
+}
 } // namespace rendering
 } // namespace matrix

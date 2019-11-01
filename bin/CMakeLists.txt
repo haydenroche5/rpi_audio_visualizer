@@ -59,4 +59,17 @@ target_link_libraries(draw_gradients
     rendering
 )
 
-add_executable(bar_idx_test ${src_dir}/bar_idx_test.cpp)
+add_executable(random_freq_bars ${src_dir}/random_freq_bars.cpp)
+set_property(TARGET random_freq_bars PROPERTY RUNTIME_OUTPUT_DIRECTORY ${build_dir})  
+target_include_directories(random_freq_bars PRIVATE
+    ${Boost_INCLUDE_DIRS}
+    ${led_matrix_include_dirs}
+    ${rendering_include_dirs}
+)
+target_link_libraries(random_freq_bars
+    ${Boost_LIBRARIES}
+    led_matrix
+    rendering
+)
+
+# add_executable(bar_idx_test ${src_dir}/bar_idx_test.cpp)

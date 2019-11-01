@@ -9,7 +9,7 @@ namespace matrix
 {
 namespace rendering
 {
-template <typename DrawerT, typename... DrawerArgsT> class Renderer
+template <typename DrawerT> class Renderer
 {
 private:
     std::unique_ptr<rgb_matrix::RGBMatrix> theMatrix;
@@ -17,6 +17,7 @@ private:
     DrawerT theDrawer;
 
 public:
+    template <typename... DrawerArgsT>
     Renderer(rgb_matrix::RGBMatrix::Options aMatrixOptions,
              rgb_matrix::RuntimeOptions aRuntimeOptions,
              DrawerArgsT &&... aDrawerArgs)
@@ -33,7 +34,7 @@ public:
         }
 
         theNextFrameBuffer = theMatrix->CreateFrameCanvas();
-        theDrawer = DrawerT{theNextFrameBuffer};
+        theDrawer.setNextFrameBuffer(theNextFrameBuffer);
     }
 
     void renderNextFrame()
