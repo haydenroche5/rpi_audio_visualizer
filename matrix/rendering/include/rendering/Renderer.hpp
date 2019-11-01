@@ -16,6 +16,7 @@ private:
     std::unique_ptr<rgb_matrix::RGBMatrix> theMatrix;
     std::array<FrameBufferT *, NUM_FRAME_BUFFERS> theNextFrameBuffers;
     size_t theNextFrameBufferIdx{0};
+    FrameBufferT *theSpecialFrame{nullptr};
 
 public:
     Renderer(rgb_matrix::RGBMatrix::Options aMatrixOptions,
@@ -34,6 +35,8 @@ public:
         {
             theNextFrameBuffers[i] = theMatrix->CreateFrameCanvas();
         }
+
+        theSpecialFrame = theMatrix->CreateFrameCanvas();
     }
 
     std::array<FrameBufferT *, NUM_FRAME_BUFFERS> getNextFrameBuffers()
@@ -43,12 +46,21 @@ public:
 
     void renderNextFrame()
     {
-        theMatrix->SwapOnVSync(theNextFrameBuffers[theNextFrameBufferIdx]);
-        ++theNextFrameBufferIdx;
-        if (theNextFrameBufferIdx == NUM_FRAME_BUFFERS)
+        static bool myCalled{false};
+
+        if (!myCalled)
         {
-            theNextFrameBufferIdx = 0;
+            std::cout << "i got called" << std::endl;
+            myCalled = true;
+            theSpecialFrame->SetPixel(0, 5, 0, 255, 255);
+            theMatrix->SwapOnVSync(theSpecialFrame);
         }
+        // theMatrix->SwapOnVSync(theNextFrameBuffers[theNextFrameBufferIdx]);
+        // ++theNextFrameBufferIdx;
+        // if (theNextFrameBufferIdx == NUM_FRAME_BUFFERS)
+        // {
+        //     theNextFrameBufferIdx = 0;
+        // }
     }
 }; // namespace rendering
 } // namespace rendering

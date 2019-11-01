@@ -2,6 +2,8 @@
 
 #include "ColorUtils.hpp"
 #include "Defs.hpp"
+#include <boost/thread.hpp>
+#include <cmath>
 #include <iostream>
 #include <stdexcept>
 
@@ -46,79 +48,120 @@ private:
 
     static constexpr size_t MAX_ANIMATION_FRAMES{NUM_ROWS / ANIMATION_SPEED};
 
-    // constexpr unsigned log2(unsigned aVal)
-    // {
-    //     return aVal ? (1 + log2(aVal >> 1)) : -1;
-    // }
-
-    // static constexpr size_t LG_BAR_WIDTH{log2(BAR_WIDTH)};
-
-    // static constexpr int getBarIdxMask()
-    // {
-    //     return (NUM_BARS - 1) << LG_BAR_WIDTH;
-    // }
-
-    // static constexpr int BAR_IDX_MASK{getBarIdxMask()};
-
-    // Color getBarIdx(int aX) { return (aX & BAR_IDX_MASK) >> LG_BAR_WIDTH; };
-
+    std::unique_ptr<rgb_matrix::RGBMatrix> theMatrix;
     FreqBarPositionsT<NUM_BARS> theCurrentBarPositions{};
     FreqBarPositionsT<NUM_BARS> theNextPositions{};
     FreqBarsUpdateQueueT<NUM_BARS> &theUpdateQueue;
-    std::array<bool, NUM_BARS>
-        theBarsAnimating{}; // could implement with a bit vector
-    bool theAnimating{false};
-    std::array<FrameBufferT *, MAX_ANIMATION_FRAMES> theNextFrameBuffers{};
-    size_t theNextFrameBufferIdx{0};
+    FrameBufferT *theNextFrameBuffer{nullptr};
 
 public:
-    FreqBarsRandom(FreqBarsUpdateQueueT<NUM_BARS> &aUpdateQueue)
-        : theUpdateQueue{aUpdateQueue}
+    FreqBarsRandom(rgb_matrix::RGBMatrix::Options aMatrixOptions,
+                   rgb_matrix::RuntimeOptions aRuntimeOptions,
+                   FreqBarsUpdateQueueT<NUM_BARS> &aUpdateQueue)
+        : theMatrix{rgb_matrix::CreateMatrixFromOptions(aMatrixOptions,
+                                                        aRuntimeOptions)},
+          theUpdateQueue{aUpdateQueue}
     {
-    }
-
-    bool doneAnimating()
-    {
-        for (const auto myBarAnimating : theBarsAnimating)
+        if (theMatrix == nullptr)
         {
-            if (myBarAnimating)
-            {
-                return false;
-            }
+            throw std::runtime_error(
+                "Error constructing rgb_matrix::RGBMatrix.");
         }
 
-        return true;
+        theNextFrameBuffer = theMatrix->CreateFrameCanvas();
     }
 
     void animate()
     {
-        if (doneAnimating())
+        auto myNumUpdatesAvailable{theUpdateQueue.read_available()};
+        if (myNumUpdatesAvailable < 1)
         {
-            auto myNumUpdatesAvailable{theUpdateQueue.read_available()};
-            if (myNumUpdatesAvailable)
+            return;
+        }
+        std::cout << "myNumUpdatesAvailable = " << myNumUpdatesAvailable
+                  << std::endl;
+
+        theNextPositions = theUpdateQueue.front();
+        theUpdateQueue.pop();
+
+        int myMaxDistance{0};
+        std::array<int, NUM_BARS> myDistances{};
+        for (size_t i{0}; i < NUM_BARS; ++i)
+        {
+            auto myDistance{theNextPositions[i] - theCurrentBarPositions[i]};
+            myDistances[i] = myDistance;
+
+            if (myDistance > myMaxDistance)
             {
-                std::cout << "myNumUpdatesAvailable: " << myNumUpdatesAvailable
-                          << std::endl;
-                // Many of these member variables can become locals with this
-                // new scheme
-                theNextPositions = theUpdateQueue.front();
-                theUpdateQueue.pop();
-                theBarsAnimating.fill(true);
+                myMaxDistance = myDistance;
+            }
+
+            if (myDistance == 0)
+            {
+                continue;
+            }
+
+            if (myDistance < 0)
+            {
+                theCurrentBarPositions[i] -=
+                    std::max(myDistance, ANIMATION_SPEED);
+            }
+            else
+            {
+                theCurrentBarPositions[i] +=
+                    std::min(myDistance, ANIMATION_SPEED);
             }
         }
 
-        if (!doneAnimating())
+        int myNumFrames{std::ceil(1.0 * myMaxDistance / ANIMATION_SPEED)};
+        for (size_t i{0}; i < myNumFrames; ++i)
         {
-            std::array<int, NUM_BARS> myDistances{};
+            auto myRowColorIdx{0};
+            auto myRowColor{ROW_COLORS[myRowColorIdx]};
+            for (int y{0}; y < NUM_ROWS; y += COLOR_HEIGHT)
+            {
+                for (int myYOffset{0}; myYOffset < COLOR_HEIGHT; ++myYOffset)
+                {
+                    size_t myBarIdx{0};
+                    for (int x{0}; x < NUM_COLS; x += BAR_WIDTH)
+                    {
+                        if ((y + myYOffset) >= theCurrentBarPositions[myBarIdx])
+                        {
+                            for (int myXOffset{0}; myXOffset < BAR_WIDTH;
+                                 ++myXOffset)
+                            {
+                                theNextFrameBuffer->SetPixel(
+                                    x + myXOffset, y + myYOffset, 0, 0, 0);
+                            }
+                        }
+                        else
+                        {
+                            for (int myXOffset{0}; myXOffset < BAR_WIDTH;
+                                 ++myXOffset)
+                            {
+                                theNextFrameBuffer->SetPixel(
+                                    x + myXOffset, y + myYOffset,
+                                    myRowColor.getRed(), myRowColor.getGreen(),
+                                    myRowColor.getBlue());
+                            }
+                        }
+
+                        ++myBarIdx;
+                    }
+                }
+                ++myRowColorIdx;
+                myRowColor = ROW_COLORS[myRowColorIdx];
+            }
+            theNextFrameBuffer = theMatrix->SwapOnVSync(theNextFrameBuffer);
+            boost::this_thread::sleep(boost::posix_time::milliseconds(10));
+
             for (size_t i{0}; i < NUM_BARS; ++i)
             {
                 auto myDistance{theNextPositions[i] -
                                 theCurrentBarPositions[i]};
-                myDistances[i] = myDistance;
 
                 if (myDistance == 0)
                 {
-                    theBarsAnimating[i] = false;
                     continue;
                 }
 
@@ -134,102 +177,6 @@ public:
                 }
             }
         }
-        // else
-        // {
-        //     return; // TODO: Do we need to do anything to keep the old
-        //             // frame? I think we do...
-        // }
-
-        // std::cout << "Start:\n";
-        // for (size_t i{0}; i < NUM_BARS; ++i)
-        // {
-        //     std::cout << theCurrentBarPositions[i] << std::endl;
-        // }
-        // std::cout << "------------" << std::endl;
-
-        // std::array<int, NUM_BARS> myDistances{};
-        // for (size_t i{0}; i < NUM_BARS; ++i)
-        // {
-        //     auto myDistance{theNextPositions[i] -
-        //                     theCurrentBarPositions[i]};
-        //     myDistances[i] = myDistance;
-
-        //     if (myDistance == 0)
-        //     {
-        //         theBarsAnimating[i] = false;
-        //         continue;
-        //     }
-
-        //     if (myDistance < 0)
-        //     {
-        //         theCurrentBarPositions[i] -=
-        //             std::max(myDistance, ANIMATION_SPEED);
-        //     }
-        //     else
-        //     {
-        //         theCurrentBarPositions[i] +=
-        //             std::min(myDistance, ANIMATION_SPEED);
-        //     }
-        // }
-
-        // std::cout << "Now:\n";
-        // for (size_t i{0}; i < NUM_BARS; ++i)
-        // {
-        //     std::cout << theCurrentBarPositions[i] << std::endl;
-        // }
-
-        auto myRowColorIdx{0};
-        auto myRowColor{ROW_COLORS[myRowColorIdx]};
-        for (int y{0}; y < NUM_ROWS; y += COLOR_HEIGHT)
-        {
-            for (int myYOffset{0}; myYOffset < COLOR_HEIGHT; ++myYOffset)
-            {
-                size_t myBarIdx{0};
-                for (int x{0}; x < NUM_COLS; x += BAR_WIDTH)
-                {
-                    if ((y + myYOffset) >= theCurrentBarPositions[myBarIdx])
-                    {
-                        for (int myXOffset{0}; myXOffset < BAR_WIDTH;
-                             ++myXOffset)
-                        {
-                            theNextFrameBuffers[theNextFrameBufferIdx]
-                                ->SetPixel(x + myXOffset, y + myYOffset, 0, 0,
-                                           0);
-                        }
-                    }
-                    else
-                    {
-                        for (int myXOffset{0}; myXOffset < BAR_WIDTH;
-                             ++myXOffset)
-                        {
-                            theNextFrameBuffers[theNextFrameBufferIdx]
-                                ->SetPixel(x + myXOffset, y + myYOffset,
-                                           myRowColor.getRed(),
-                                           myRowColor.getGreen(),
-                                           myRowColor.getBlue());
-                        }
-                    }
-
-                    ++myBarIdx; // We can determine these without using
-                                // the extra x2/y2 loops
-                }
-            }
-            ++myRowColorIdx; // We can determine these without using the
-                             // extra x2/y2 loops
-            myRowColor = ROW_COLORS[myRowColorIdx];
-        }
-        ++theNextFrameBufferIdx;
-
-        if (theNextFrameBufferIdx == MAX_ANIMATION_FRAMES)
-        {
-            theNextFrameBufferIdx = 0;
-        }
-    }
-
-    void setNextFrameBuffers(
-        const std::array<FrameBufferT *, MAX_ANIMATION_FRAMES> &aBuffers)
-    {
-        theNextFrameBuffers = aBuffers;
     }
 };
 } // namespace rendering
