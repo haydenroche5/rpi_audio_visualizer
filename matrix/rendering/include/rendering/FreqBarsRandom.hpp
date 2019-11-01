@@ -22,12 +22,14 @@ template <size_t NUM_BARS, size_t NUM_COLORS_PER_GRADIENT, int ANIMATION_SPEED>
 class FreqBarsRandom
 {
     static constexpr size_t NUM_GRADIENTS{4};
+    static constexpr size_t TOTAL_COLORS{NUM_COLORS_PER_GRADIENT *
+                                         NUM_GRADIENTS};
 
     static_assert(NUM_COLS % NUM_BARS == 0,
                   "FreqBarsRandom instantiated with a NUM_BARS that doesn't "
                   "evenly divide NUM_COLS.");
-    static_assert(NUM_ROWS % (NUM_COLORS_PER_GRADIENT * NUM_GRADIENTS) == 0,
-                  "FreqBarsRandom instantiated with a NUM_COLORS_PER_GRADIENT "
+    static_assert(NUM_ROWS % TOTAL_COLORS == 0,
+                  "FreqBarsRandom instantiated with a TOTAL_COLORS "
                   "that doesn't "
                   "evenly divide NUM_ROWS.");
     static_assert(
@@ -39,9 +41,10 @@ private:
     static constexpr size_t BAR_WIDTH{NUM_COLS / NUM_BARS};
     static constexpr size_t COLOR_HEIGHT{
         NUM_ROWS / (NUM_COLORS_PER_GRADIENT * NUM_GRADIENTS)};
-
     static constexpr auto ROW_COLORS{
         createRowColors<NUM_GRADIENTS, NUM_COLORS_PER_GRADIENT>()};
+
+    static constexpr size_t MAX_ANIMATION_FRAMES{NUM_ROWS / ANIMATION_SPEED};
 
     // constexpr unsigned log2(unsigned aVal)
     // {
@@ -65,7 +68,8 @@ private:
     std::array<bool, NUM_BARS>
         theBarsAnimating{}; // could implement with a bit vector
     bool theAnimating{false};
-    FrameBufferT *theNextFrameBuffer{nullptr};
+    std::array<FrameBufferT *, MAX_ANIMATION_FRAMES> theNextFrameBuffers{};
+    size_t theNextFrameBufferIdx{0};
 
 public:
     FreqBarsRandom(FreqBarsUpdateQueueT<NUM_BARS> &aUpdateQueue)
@@ -86,34 +90,26 @@ public:
         return true;
     }
 
-    void draw()
+    void processUpdates()
     {
-        if (theNextFrameBuffer == nullptr)
+        auto myNumUpdatesAvailable{theUpdateQueue.read_available()};
+        if (myNumUpdatesAvailable)
         {
-            throw std::runtime_error("FreqBarsRandom::draw called while "
-                                     "next frame buffers is nullptr.");
+            std::cout << "myNumUpdatesAvailable: " << myNumUpdatesAvailable
+                      << std::endl;
+            // Many of these member variables can become locals with this
+            // new scheme
+            theNextPositions = theUpdateQueue.front();
+            theUpdateQueue.pop();
+            theBarsAnimating.fill(true);
+        }
+        else
+        {
+            return; // TODO: Do we need to do anything to keep the old
+                    // frame? I think we do...
         }
 
-        if (!theAnimating)
-        {
-            auto myNumUpdatesAvailable{theUpdateQueue.read_available()};
-            if (myNumUpdatesAvailable)
-            {
-                std::cout << "myNumUpdatesAvailable: " << myNumUpdatesAvailable
-                          << std::endl;
-                theNextPositions = theUpdateQueue.front();
-                theUpdateQueue.pop();
-                theAnimating = true;
-                theBarsAnimating.fill(true);
-            }
-            else
-            {
-                return; // TODO: Do we need to do anything to keep the old
-                        // frame? I think we do...
-            }
-        }
-
-        if (theAnimating)
+        while (!doneAnimating())
         {
             std::array<int, NUM_BARS> myDistances{};
             for (size_t i{0}; i < NUM_BARS; ++i)
@@ -154,8 +150,9 @@ public:
                             for (int myXOffset{0}; myXOffset < BAR_WIDTH;
                                  ++myXOffset)
                             {
-                                theNextFrameBuffer->SetPixel(
-                                    x + myXOffset, y + myYOffset, 0, 0, 0);
+                                theNextFrameBuffers[theNextFrameBufferIdx]
+                                    ->SetPixel(x + myXOffset, y + myYOffset, 0,
+                                               0, 0);
                             }
                         }
                         else
@@ -163,32 +160,139 @@ public:
                             for (int myXOffset{0}; myXOffset < BAR_WIDTH;
                                  ++myXOffset)
                             {
-                                theNextFrameBuffer->SetPixel(
-                                    x + myXOffset, y + myYOffset,
-                                    myRowColor.getRed(), myRowColor.getGreen(),
-                                    myRowColor.getBlue());
+                                theNextFrameBuffers[theNextFrameBufferIdx]
+                                    ->SetPixel(x + myXOffset, y + myYOffset,
+                                               myRowColor.getRed(),
+                                               myRowColor.getGreen(),
+                                               myRowColor.getBlue());
                             }
                         }
 
-                        ++myBarIdx; // We can determine these without using the
-                                    // extra x2/y2 loops
+                        ++myBarIdx; // We can determine these without using
+                                    // the extra x2/y2 loops
                     }
                 }
                 ++myRowColorIdx; // We can determine these without using the
                                  // extra x2/y2 loops
                 myRowColor = ROW_COLORS[myRowColorIdx];
             }
-        }
+            ++theNextFrameBufferIdx;
 
-        if (doneAnimating())
-        {
-            theAnimating = false;
+            if (theNextFrameBufferIdx == MAX_ANIMATION_FRAMES)
+            {
+                theNextFrameBufferIdx = 0;
+            }
         }
     }
 
-    void setNextFrameBuffer(FrameBufferT *aBuffer)
+    // void draw()
+    // {
+    //     if (theNextFrameBuffer == nullptr)
+    //     {
+    //         throw std::runtime_error("FreqBarsRandom::draw called while "
+    //                                  "next frame buffers is nullptr.");
+    //     }
+
+    //     if (!theAnimating)
+    //     {
+    //         auto myNumUpdatesAvailable{theUpdateQueue.read_available()};
+    //         if (myNumUpdatesAvailable)
+    //         {
+    //             std::cout << "myNumUpdatesAvailable: " <<
+    //             myNumUpdatesAvailable
+    //                       << std::endl;
+    //             theNextPositions = theUpdateQueue.front();
+    //             theUpdateQueue.pop();
+    //             theAnimating = true;
+    //             theBarsAnimating.fill(true);
+    //         }
+    //         else
+    //         {
+    //             return; // TODO: Do we need to do anything to keep the old
+    //                     // frame? I think we do...
+    //         }
+    //     }
+
+    //     if (theAnimating)
+    //     {
+    //         std::array<int, NUM_BARS> myDistances{};
+    //         for (size_t i{0}; i < NUM_BARS; ++i)
+    //         {
+    //             auto myDistance{theNextPositions[i] -
+    //                             theCurrentBarPositions[i]};
+    //             myDistances[i] = myDistance;
+
+    //             if (myDistance == 0)
+    //             {
+    //                 theBarsAnimating[i] = false;
+    //                 continue;
+    //             }
+
+    //             if (myDistance < 0)
+    //             {
+    //                 theCurrentBarPositions[i] -=
+    //                     std::max(myDistance, ANIMATION_SPEED);
+    //             }
+    //             else
+    //             {
+    //                 theCurrentBarPositions[i] +=
+    //                     std::min(myDistance, ANIMATION_SPEED);
+    //             }
+    //         }
+
+    //         auto myRowColorIdx{0};
+    //         auto myRowColor{ROW_COLORS[myRowColorIdx]};
+    //         for (int y{0}; y < NUM_ROWS; y += COLOR_HEIGHT)
+    //         {
+    //             for (int myYOffset{0}; myYOffset < COLOR_HEIGHT; ++myYOffset)
+    //             {
+    //                 size_t myBarIdx{0};
+    //                 for (int x{0}; x < NUM_COLS; x += BAR_WIDTH)
+    //                 {
+    //                     if ((y + myYOffset) >=
+    //                     theCurrentBarPositions[myBarIdx])
+    //                     {
+    //                         for (int myXOffset{0}; myXOffset < BAR_WIDTH;
+    //                              ++myXOffset)
+    //                         {
+    //                             theNextFrameBuffer->SetPixel(
+    //                                 x + myXOffset, y + myYOffset, 0, 0, 0);
+    //                         }
+    //                     }
+    //                     else
+    //                     {
+    //                         for (int myXOffset{0}; myXOffset < BAR_WIDTH;
+    //                              ++myXOffset)
+    //                         {
+    //                             theNextFrameBuffer->SetPixel(
+    //                                 x + myXOffset, y + myYOffset,
+    //                                 myRowColor.getRed(),
+    //                                 myRowColor.getGreen(),
+    //                                 myRowColor.getBlue());
+    //                         }
+    //                     }
+
+    //                     ++myBarIdx; // We can determine these without using
+    //                     the
+    //                                 // extra x2/y2 loops
+    //                 }
+    //             }
+    //             ++myRowColorIdx; // We can determine these without using the
+    //                              // extra x2/y2 loops
+    //             myRowColor = ROW_COLORS[myRowColorIdx];
+    //         }
+    //     }
+
+    //     if (doneAnimating())
+    //     {
+    //         theAnimating = false;
+    //     }
+    // }
+
+    void setNextFrameBuffers(
+        const std::array<FrameBufferT *, MAX_ANIMATION_FRAMES> &aBuffers)
     {
-        theNextFrameBuffer = aBuffer;
+        theNextFrameBuffers = aBuffers;
     }
 };
 } // namespace rendering

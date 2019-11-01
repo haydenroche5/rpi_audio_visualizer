@@ -18,6 +18,8 @@ template <size_t NUM_BARS>
 using FreqBarsUpdateQueueT =
     boost::lockfree::spsc_queue<FreqBarPositionsT<NUM_BARS>>;
 using FrameBufferT = rgb_matrix::FrameCanvas;
+
+using FrameBufferQueueT = boost::lockfree::spsc_queue<FrameBufferT>;
 // using AvgOctavePowersT = std::array<double, NUM_OCTAVES>;
 } // namespace rendering
 } // namespace matrix

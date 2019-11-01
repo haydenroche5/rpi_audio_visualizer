@@ -2,30 +2,28 @@
 
 #include "Defs.hpp"
 #include "led_matrix/led-matrix.h"
+#include <chrono>
 #include <memory>
 #include <stdexcept>
+#include <thread>
 
 namespace matrix
 {
 namespace rendering
 {
-template <typename DrawerT> class Renderer
+template <size_t NUM_FRAME_BUFFERS> class Renderer
 {
 private:
     std::unique_ptr<rgb_matrix::RGBMatrix> theMatrix;
-    FrameBufferT *theNextFrameBuffer;
-    DrawerT theDrawer;
+    std::array<FrameBufferT *, NUM_FRAME_BUFFERS> theNextFrameBuffers;
+    size_t theNextFrameBufferIdx{0};
 
 public:
-    template <typename... DrawerArgsT>
     Renderer(rgb_matrix::RGBMatrix::Options aMatrixOptions,
-             rgb_matrix::RuntimeOptions aRuntimeOptions,
-             DrawerArgsT &&... aDrawerArgs)
+             rgb_matrix::RuntimeOptions aRuntimeOptions)
         : theMatrix{rgb_matrix::CreateMatrixFromOptions(aMatrixOptions,
                                                         aRuntimeOptions)},
-          theNextFrameBuffer{nullptr}, theDrawer{
-                                           DrawerT(std::forward<DrawerArgsT>(
-                                               aDrawerArgs)...)}
+          theNextFrameBuffers{}
     {
         if (theMatrix == nullptr)
         {
@@ -33,15 +31,34 @@ public:
                 "Error constructing rgb_matrix::RGBMatrix.");
         }
 
-        theNextFrameBuffer = theMatrix->CreateFrameCanvas();
-        theDrawer.setNextFrameBuffer(theNextFrameBuffer);
+        for (size_t i{0}; i < NUM_FRAME_BUFFERS; ++i)
+        {
+            theNextFrameBuffers[i] = theMatrix->CreateFrameCanvas();
+        }
+    }
+
+    std::array<FrameBufferT *, NUM_FRAME_BUFFERS> getNextFrameBuffers()
+    {
+        return theNextFrameBuffers;
     }
 
     void renderNextFrame()
     {
-        theDrawer.draw();
-        theMatrix->SwapOnVSync(theNextFrameBuffer);
+        // auto t1 = std::chrono::high_resolution_clock::now();
+        // theDrawer.draw();
+        theMatrix->SwapOnVSync(theNextFrameBuffers[theNextFrameBufferIdx]);
+        ++theNextFrameBufferIdx;
+        if (theNextFrameBufferIdx == NUM_FRAME_BUFFERS)
+        {
+            theNextFrameBufferIdx = 0;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        // auto t2 = std::chrono::high_resolution_clock::now();
+        // auto duration =
+        //     std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1)
+        //         .count();
+        // std::cout << "duration: " << duration << std::endl;
     }
-};
+}; // namespace rendering
 } // namespace rendering
 } // namespace matrix
