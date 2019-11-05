@@ -11,15 +11,6 @@ namespace matrix
 {
 namespace rendering
 {
-// TODO: This guy should have a boost lockfree queue that it drains. An element
-// in the queue is one of NUM_BARS updates to the bar positions. Maintain an
-// animating flag. In draw, when this flag is false, check the
-// update queue for new updates. If there's a new update, set the animating flag
-// to true and draw the next frame based on the update. Continue this for each
-// draw call until the animation is complete, and set the animating flag back to
-// false.
-// TODO: Scratch that. Max number of frames per animation is 64. Maintain a
-// frame buffer queue of max depth 64.
 template <size_t NUM_BARS, size_t NUM_COLORS_PER_GRADIENT, int ANIMATION_SPEED>
 class FreqBarsRandom
 {
@@ -53,6 +44,7 @@ private:
     FreqBarPositionsT<NUM_BARS> theNextPositions{};
     FreqBarsUpdateQueueT<NUM_BARS> &theUpdateQueue;
     FrameBufferT *theNextFrameBuffer{nullptr};
+    std::array<bool, NUM_BARS> theBarsAnimating{};
 
 public:
     FreqBarsRandom(rgb_matrix::RGBMatrix::Options aMatrixOptions,
@@ -71,6 +63,19 @@ public:
         theNextFrameBuffer = theMatrix->CreateFrameCanvas();
     }
 
+    bool animating() const
+    {
+        for (auto myAnimating : theBarsAnimating)
+        {
+            if (myAnimating)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     void animate()
     {
         auto myNumUpdatesAvailable{theUpdateQueue.read_available()};
@@ -84,38 +89,63 @@ public:
         theNextPositions = theUpdateQueue.front();
         theUpdateQueue.pop();
 
-        int myMaxDistance{0};
-        std::array<int, NUM_BARS> myDistances{};
-        for (size_t i{0}; i < NUM_BARS; ++i)
+        // int myMaxDistance{0};
+        // std::array<int, NUM_BARS> myDistances{};
+        // for (size_t i{0}; i < NUM_BARS; ++i)
+        // {
+        //     auto myDistance{theNextPositions[i] - theCurrentBarPositions[i]};
+        //     myDistances[i] = myDistance;
+
+        //     if (myDistance > myMaxDistance)
+        //     {
+        //         myMaxDistance = myDistance;
+        //     }
+
+        //     if (myDistance == 0)
+        //     {
+        //         continue;
+        //     }
+
+        //     if (myDistance < 0)
+        //     {
+        //         theCurrentBarPositions[i] -=
+        //             std::max(myDistance, ANIMATION_SPEED);
+        //     }
+        //     else
+        //     {
+        //         theCurrentBarPositions[i] +=
+        //             std::min(myDistance, ANIMATION_SPEED);
+        //     }
+        // }
+
+        // int myNumFrames{std::ceil(1.0 * myMaxDistance / ANIMATION_SPEED)};
+        while (animating())
         {
-            auto myDistance{theNextPositions[i] - theCurrentBarPositions[i]};
-            myDistances[i] = myDistance;
-
-            if (myDistance > myMaxDistance)
+            for (size_t i{0}; i < NUM_BARS; ++i)
             {
-                myMaxDistance = myDistance;
+                auto myDistance{theNextPositions[i] -
+                                theCurrentBarPositions[i]};
+
+                if (myDistance == 0)
+                {
+                    continue;
+                }
+
+                if (myDistance < 0)
+                {
+                    theCurrentBarPositions[i] -=
+                        std::max(myDistance, ANIMATION_SPEED);
+                }
+                else
+                {
+                    theCurrentBarPositions[i] +=
+                        std::min(myDistance, ANIMATION_SPEED);
+                }
+
+                theBarsAnimating[i] =
+                    (theCurrentBarPositions[i] != theNextPositions[i]);
             }
 
-            if (myDistance == 0)
-            {
-                continue;
-            }
-
-            if (myDistance < 0)
-            {
-                theCurrentBarPositions[i] -=
-                    std::max(myDistance, ANIMATION_SPEED);
-            }
-            else
-            {
-                theCurrentBarPositions[i] +=
-                    std::min(myDistance, ANIMATION_SPEED);
-            }
-        }
-
-        int myNumFrames{std::ceil(1.0 * myMaxDistance / ANIMATION_SPEED)};
-        for (size_t i{0}; i < myNumFrames; ++i)
-        {
             auto myRowColorIdx{0};
             auto myRowColor{ROW_COLORS[myRowColorIdx]};
             for (int y{0}; y < NUM_ROWS; y += COLOR_HEIGHT)
@@ -153,29 +183,6 @@ public:
                 myRowColor = ROW_COLORS[myRowColorIdx];
             }
             theNextFrameBuffer = theMatrix->SwapOnVSync(theNextFrameBuffer);
-            boost::this_thread::sleep(boost::posix_time::milliseconds(10));
-
-            for (size_t i{0}; i < NUM_BARS; ++i)
-            {
-                auto myDistance{theNextPositions[i] -
-                                theCurrentBarPositions[i]};
-
-                if (myDistance == 0)
-                {
-                    continue;
-                }
-
-                if (myDistance < 0)
-                {
-                    theCurrentBarPositions[i] -=
-                        std::max(myDistance, ANIMATION_SPEED);
-                }
-                else
-                {
-                    theCurrentBarPositions[i] +=
-                        std::min(myDistance, ANIMATION_SPEED);
-                }
-            }
         }
     }
 };
