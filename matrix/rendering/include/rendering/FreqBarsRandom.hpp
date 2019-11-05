@@ -77,6 +77,33 @@ public:
         return false;
     }
 
+    void updateBarPositions()
+    {
+        for (size_t i{0}; i < NUM_BARS; ++i)
+        {
+            auto myDistance{theNextPositions[i] - theCurrentBarPositions[i]};
+
+            if (myDistance == 0)
+            {
+                continue;
+            }
+
+            if (myDistance < 0)
+            {
+                theCurrentBarPositions[i] -=
+                    std::max(myDistance, ANIMATION_SPEED);
+            }
+            else
+            {
+                theCurrentBarPositions[i] +=
+                    std::min(myDistance, ANIMATION_SPEED);
+            }
+
+            theBarsAnimating[i] =
+                (theCurrentBarPositions[i] != theNextPositions[i]);
+        }
+    }
+
     void animate()
     {
         auto myNumUpdatesAvailable{theUpdateQueue.read_available()};
@@ -90,63 +117,9 @@ public:
         theNextPositions = theUpdateQueue.front();
         theUpdateQueue.pop();
 
-        // int myMaxDistance{0};
-        // std::array<int, NUM_BARS> myDistances{};
-        // for (size_t i{0}; i < NUM_BARS; ++i)
-        // {
-        //     auto myDistance{theNextPositions[i] - theCurrentBarPositions[i]};
-        //     myDistances[i] = myDistance;
-
-        //     if (myDistance > myMaxDistance)
-        //     {
-        //         myMaxDistance = myDistance;
-        //     }
-
-        //     if (myDistance == 0)
-        //     {
-        //         continue;
-        //     }
-
-        //     if (myDistance < 0)
-        //     {
-        //         theCurrentBarPositions[i] -=
-        //             std::max(myDistance, ANIMATION_SPEED);
-        //     }
-        //     else
-        //     {
-        //         theCurrentBarPositions[i] +=
-        //             std::min(myDistance, ANIMATION_SPEED);
-        //     }
-        // }
-
-        // int myNumFrames{std::ceil(1.0 * myMaxDistance / ANIMATION_SPEED)};
+        updateBarPositions();
         while (animating())
         {
-            for (size_t i{0}; i < NUM_BARS; ++i)
-            {
-                auto myDistance{theNextPositions[i] -
-                                theCurrentBarPositions[i]};
-
-                if (myDistance == 0)
-                {
-                    continue;
-                }
-
-                if (myDistance < 0)
-                {
-                    theCurrentBarPositions[i] -=
-                        std::max(myDistance, ANIMATION_SPEED);
-                }
-                else
-                {
-                    theCurrentBarPositions[i] +=
-                        std::min(myDistance, ANIMATION_SPEED);
-                }
-
-                theBarsAnimating[i] =
-                    (theCurrentBarPositions[i] != theNextPositions[i]);
-            }
-
             auto myRowColorIdx{0};
             auto myRowColor{ROW_COLORS[myRowColorIdx]};
             for (int y{0}; y < NUM_ROWS; y += COLOR_HEIGHT)
@@ -184,11 +157,7 @@ public:
                 myRowColor = ROW_COLORS[myRowColorIdx];
             }
             theNextFrameBuffer = theMatrix->SwapOnVSync(theNextFrameBuffer);
-            auto stop = std::chrono::high_resolution_clock::now();
-            auto duration =
-                std::chrono::duration_cast<std::chrono::microseconds>(stop -
-                                                                      start);
-            std::cout << "duration: " << duration << std::endl;
+            updateBarPositions();
         }
     }
 };
