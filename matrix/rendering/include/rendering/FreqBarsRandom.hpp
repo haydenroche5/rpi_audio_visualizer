@@ -3,6 +3,7 @@
 #include "ColorUtils.hpp"
 #include "Defs.hpp"
 #include <boost/thread.hpp>
+#include <chrono>
 #include <cmath>
 #include <iostream>
 #include <stdexcept>
@@ -83,9 +84,9 @@ public:
         {
             return;
         }
-        std::cout << "myNumUpdatesAvailable = " << myNumUpdatesAvailable
-                  << std::endl;
-
+        // std::cout << "myNumUpdatesAvailable = " << myNumUpdatesAvailable
+        //           << std::endl;
+        auto start = std::chrono::high_resolution_clock::now();
         theNextPositions = theUpdateQueue.front();
         theUpdateQueue.pop();
 
@@ -183,6 +184,11 @@ public:
                 myRowColor = ROW_COLORS[myRowColorIdx];
             }
             theNextFrameBuffer = theMatrix->SwapOnVSync(theNextFrameBuffer);
+            auto stop = std::chrono::high_resolution_clock::now();
+            auto duration =
+                std::chrono::duration_cast<std::chrono::microseconds>(stop -
+                                                                      start);
+            std::cout << "duration: " << duration << std::endl;
         }
     }
 };

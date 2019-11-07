@@ -8,7 +8,7 @@ list(APPEND audio_srcs
 
 add_library(audio STATIC ${audio_srcs})
 target_include_directories(audio INTERFACE ${CMAKE_CURRENT_LIST_DIR}/include PRIVATE include/audio ${Boost_INCLUDE_DIRS})
-target_link_libraries(audio portaudiocpp fftwpp)
+target_link_libraries(audio PkgConfig::PortAudioCpp fftwpp)
 
 # target_include_directories(  )
 
