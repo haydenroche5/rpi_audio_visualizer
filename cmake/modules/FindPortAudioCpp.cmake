@@ -1,0 +1,1 @@
+pkg_check_modules(PortAudioCpp REQUIRED IMPORTED_TARGET GLOBAL portaudiocpp)
