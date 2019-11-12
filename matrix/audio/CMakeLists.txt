@@ -8,11 +8,11 @@ add_library(audio
 target_include_directories(audio
     PUBLIC
         ${CMAKE_CURRENT_LIST_DIR}/include
-        ${Boost_INCLUDE_DIRS} # TODO: needed?
     PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}/include/audio)
 target_link_libraries(audio
     PUBLIC
+        Boost::headers
         fftwpp
         PkgConfig::PortAudioCpp)
 set_target_properties(audio PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/build)
