@@ -46,6 +46,7 @@ private:
     FreqBarsUpdateQueueT<NUM_BARS> &theUpdateQueue;
     FrameBufferT *theNextFrameBuffer{nullptr};
     std::array<bool, NUM_BARS> theBarsAnimating{};
+    std::chrono::microseconds theMaxDuration{0};
 
 public:
     FreqBarsRandom(rgb_matrix::RGBMatrix::Options aMatrixOptions,
@@ -113,7 +114,6 @@ public:
         }
         // std::cout << "myNumUpdatesAvailable = " << myNumUpdatesAvailable
         //           << std::endl;
-        auto start = std::chrono::high_resolution_clock::now();
         theNextPositions = theUpdateQueue.front();
         theUpdateQueue.pop();
 
@@ -156,8 +156,8 @@ public:
                 ++myRowColorIdx;
                 myRowColor = ROW_COLORS[myRowColorIdx];
             }
-            theNextFrameBuffer = theMatrix->SwapOnVSync(theNextFrameBuffer);
             updateBarPositions();
+            theNextFrameBuffer = theMatrix->SwapOnVSync(theNextFrameBuffer);
         }
     }
 };

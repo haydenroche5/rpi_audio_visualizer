@@ -1,7 +1,7 @@
 set(build_dir ${CMAKE_CURRENT_LIST_DIR}/build)
 set(src_dir ${CMAKE_CURRENT_LIST_DIR}/src)
 
-get_target_property(portaudiocpp_include_dirs PkgConfig::PortAudioCpp INTERFACE_INCLUDE_DIRECTORIES)
+# get_target_property(portaudiocpp_include_dirs PkgConfig::PortAudioCpp INTERFACE_INCLUDE_DIRECTORIES)
 # get_target_property(audio_include_dirs audio INTERFACE_INCLUDE_DIRECTORIES)
 # add_executable(print_samples ${src_dir}/print_samples.cpp)
 # set_property(TARGET print_samples PROPERTY RUNTIME_OUTPUT_DIRECTORY ${build_dir})  
@@ -14,19 +14,14 @@ get_target_property(portaudiocpp_include_dirs PkgConfig::PortAudioCpp INTERFACE_
 #     ${Boost_LIBRARIES}
 # )
 
-get_target_property(fftwpp_include_dirs fftwpp INTERFACE_INCLUDE_DIRECTORIES)
 add_executable(print_fft_mag_samples ${src_dir}/print_fft_mag_samples.cpp)
 set_property(TARGET print_fft_mag_samples PROPERTY RUNTIME_OUTPUT_DIRECTORY ${build_dir})  
-target_include_directories(print_fft_mag_samples PRIVATE
-    ${portaudiocpp_include_dirs}
-    ${audio_include_dirs}
-    ${fftwpp_include_dirs}
-)
 target_link_libraries(print_fft_mag_samples
     audio
-    ${Boost_LIBRARIES}
-    fftwpp
+    Boost::thread
 )
+# get_target_property(print_fft_mag_samples_link_libs print_fft_mag_samples INTERFACE_LINK_LIBRARIES)
+# message("print_fft_mag_samples_link_libs: ${print_fft_mag_samples_link_libs}")
 
 # add_executable(render_fft_mag_bars ${src_dir}/render_fft_mag_bars.cpp)
 # set_property(TARGET render_fft_mag_bars PROPERTY RUNTIME_OUTPUT_DIRECTORY ${build_dir})  
