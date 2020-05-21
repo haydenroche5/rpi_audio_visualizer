@@ -13,7 +13,7 @@ static constexpr size_t NUM_ROWS{64};
 static constexpr size_t NUM_COLS{64};
 
 template <size_t NUM_BARS> using FreqBarPositionsT = std::array<int, NUM_BARS>;
-static constexpr size_t FREQ_BAR_UPDATE_QUEUE_DEPTH{4};
+static constexpr size_t FREQ_BAR_UPDATE_QUEUE_DEPTH{1};
 template <size_t NUM_BARS>
 using FreqBarsUpdateQueueT =
     boost::lockfree::spsc_queue<FreqBarPositionsT<NUM_BARS>>;

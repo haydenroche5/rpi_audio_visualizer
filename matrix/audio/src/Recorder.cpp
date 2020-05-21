@@ -16,9 +16,10 @@ Recorder::Recorder(AudioQueueT &aQueue, bool aIsStreamingMode,
 
 bool Recorder::isDoneRecording() const { return theIsDoneRecording; }
 
-int Recorder::paCallbackFun(const void *aInputBuffer, void *, unsigned long,
+int Recorder::paCallbackFun(const void *aInputBuffer, void *,
+                            unsigned long aFrameCount,
                             const PaStreamCallbackTimeInfo *,
-                            PaStreamCallbackFlags)
+                            PaStreamCallbackFlags aStatusFlags)
 {
     if (theIsDoneRecording)
     {
@@ -26,11 +27,13 @@ int Recorder::paCallbackFun(const void *aInputBuffer, void *, unsigned long,
     }
 
     std::memcpy(theCurrentBuffer.data(),
-                static_cast<const float *>(aInputBuffer), SAMPLES_PER_BUFFER);
+                static_cast<const float *>(aInputBuffer),
+                SAMPLES_PER_BUFFER * sizeof(float));
     theQueue.push(theCurrentBuffer);
 
     // TODO: Stream vs. non-stream should be a compile time thing, i.e. set with
     // a template parameter, and then this code can be constexpr-if'ed
+    // Same with the conditional at the start of this function.
     if (!theIsStreamingMode)
     {
         theSamplesRecorded += SAMPLES_PER_BUFFER;

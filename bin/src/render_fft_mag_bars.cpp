@@ -173,7 +173,7 @@ int main(void)
         }
         myAudioQueue.pop();
 
-        hannWindowSamples(myCurrentBuffer);
+        hannWindow(myCurrentBuffer);
         auto myFreqsAndMags{calculateFftMags(myCurrentBuffer)};
 
         std::array<std::pair<size_t, double>, NUM_BARS> myAverageMagnitudes{};

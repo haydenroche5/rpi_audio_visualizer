@@ -62,7 +62,9 @@ target_include_directories(random_freq_bars PRIVATE
     ${rendering_include_dirs}
 )
 target_link_libraries(random_freq_bars
-    ${Boost_LIBRARIES}
+    Boost::thread
+    Boost::chrono
+    audio
     led_matrix
     rendering
 )

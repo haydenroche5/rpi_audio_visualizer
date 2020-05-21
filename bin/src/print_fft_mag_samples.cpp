@@ -66,7 +66,7 @@ int main(void)
 
     AudioQueueT myQueue{AUDIO_QUEUE_DEPTH};
     constexpr bool IS_STREAMING_MODE{false};
-    constexpr size_t SECONDS_TO_RECORD{1};
+    constexpr size_t SECONDS_TO_RECORD{3};
     constexpr size_t SAMPLES_TO_RECORD{static_cast<size_t>(
         std::ceil((SECONDS_TO_RECORD * SAMPLE_RATE * CHANNELS) /
                   static_cast<double>(FRAMES_PER_BUFFER)) *
@@ -92,11 +92,15 @@ int main(void)
 
     mySampleCollectingThread.join();
 
-    constexpr bool IS_WINDOW_MODE{true};
+    constexpr bool IS_WINDOW_MODE{false};
     const auto &myCollectedSamples{myCollector.getSamples()};
     constexpr size_t FFT_POINTS{SAMPLES_TO_RECORD};
     constexpr size_t FFT_POINTS_REAL{SAMPLES_TO_RECORD / 2 + 1};
-    constexpr auto FUNDAMENTAL_FREQUENCY{SAMPLE_RATE / FFT_POINTS};
+    constexpr auto FUNDAMENTAL_FREQUENCY{1.0 * SAMPLE_RATE / FFT_POINTS};
+
+    std::cout << "FFT_POINTS_REAL: " << FFT_POINTS_REAL << std::endl;
+    std::cout << "FUNDAMENTAL_FREQUENCY: " << FUNDAMENTAL_FREQUENCY
+              << std::endl;
 
     // TODO: This can be computed at compile time. Factor out.
     std::array<double, FFT_POINTS> myFftCenterFreqs{};
@@ -125,10 +129,13 @@ int main(void)
         }
     }
 
+    // TODO: for testing
+    mySamples = generateSampledSineWave(SAMPLES_TO_RECORD, 440);
+
     fftwpp::rcfft1d myFft(SAMPLES_TO_RECORD, mySamples, myFftOutput);
     myFft.fft(mySamples, myFftOutput);
 
-    const char *mySamplesFileName{"samples.txt"};
+    const char *mySamplesFileName{"samples.csv"};
     std::ofstream mySamplesFileStream;
     mySamplesFileStream.open(mySamplesFileName);
     mySamplesFileStream << "Time,Amplitude\n";
@@ -138,7 +145,7 @@ int main(void)
     }
     mySamplesFileStream.close();
 
-    const char *theMagsFileName{"fft_mags.txt"};
+    const char *theMagsFileName{"fft_mags.csv"};
     std::ofstream theMagsFileStream;
     theMagsFileStream.open(theMagsFileName);
     theMagsFileStream << "Frequency,Magnitude\n";
