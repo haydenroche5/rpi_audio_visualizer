@@ -54,14 +54,14 @@ target_link_libraries(draw_gradients
     rendering
 )
 
-add_executable(random_freq_bars ${src_dir}/random_freq_bars.cpp)
-set_property(TARGET random_freq_bars PROPERTY RUNTIME_OUTPUT_DIRECTORY ${build_dir})  
-target_include_directories(random_freq_bars PRIVATE
+add_executable(visualizer ${src_dir}/visualizer.cpp)
+set_property(TARGET visualizer PROPERTY RUNTIME_OUTPUT_DIRECTORY ${build_dir})
+target_include_directories(visualizer PRIVATE
     ${Boost_INCLUDE_DIRS}
     ${led_matrix_include_dirs}
     ${rendering_include_dirs}
 )
-target_link_libraries(random_freq_bars
+target_link_libraries(visualizer
     Boost::thread
     Boost::chrono
     audio

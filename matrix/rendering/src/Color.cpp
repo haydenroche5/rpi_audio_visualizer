@@ -19,5 +19,12 @@ void Color::setRed(Color::ChannelT aValue) { theChannels[0] = aValue; }
 void Color::setGreen(Color::ChannelT aValue) { theChannels[1] = aValue; }
 
 void Color::setBlue(Color::ChannelT aValue) { theChannels[2] = aValue; }
+
+std::ostream &operator<<(std::ostream &aStream, const Color &aColor)
+{
+    aStream << "R: " << +aColor.getRed() << ", G: " << +aColor.getGreen()
+            << ", B: " << +aColor.getBlue();
+    return aStream;
+}
 } // namespace rendering
 } // namespace matrix

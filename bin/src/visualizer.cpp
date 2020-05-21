@@ -9,14 +9,13 @@
 #include "portaudiocpp/StreamParameters.hxx"
 
 #include "rendering/Defs.hpp"
-#include "rendering/FreqBarsRandom.hpp"
 #include "rendering/Renderer.hpp"
+#include "rendering/Visualizer.hpp"
 
 #include <boost/thread.hpp>
 #include <chrono>
 #include <getopt.h>
 #include <iostream>
-#include <random>
 #include <signal.h>
 #include <thread>
 
@@ -26,10 +25,6 @@ using namespace matrix::audio;
 
 volatile bool InterruptReceived{false};
 static void InterruptHandler(int signo) { InterruptReceived = true; }
-
-std::random_device myRandomDevice;
-std::mt19937 myRNG(myRandomDevice());
-std::uniform_int_distribution<std::mt19937::result_type> myDist63(0, 63);
 
 template <size_t NUM_BARS, size_t FFT_POINTS_REAL>
 std::array<float, NUM_BARS>
@@ -54,8 +49,8 @@ dotWithMelFilters(const std::array<float, FFT_POINTS_REAL> &aPeriodogram)
 }
 
 template <size_t NUM_BARS>
-void genRandomPositions(AudioQueueT &aAudioQueue,
-                        FreqBarsUpdateQueueT<NUM_BARS> &aBarUpdateQueue)
+void updatePositions(AudioQueueT &aAudioQueue,
+                     VisualizerUpdateQueueT<NUM_BARS> &aBarUpdateQueue)
 {
     FftInputArrayT myFftInput{SAMPLES_PER_BUFFER, FFT_ALIGNMENT};
     FftOutputArrayT myFftOutput{FFT_POINTS_REAL, FFT_ALIGNMENT};
@@ -63,7 +58,6 @@ void genRandomPositions(AudioQueueT &aAudioQueue,
 
     while (true)
     {
-        /************/
         if (aAudioQueue.read_available() > 0)
         {
             const auto &myBuffer{aAudioQueue.front()};
@@ -87,48 +81,35 @@ void genRandomPositions(AudioQueueT &aAudioQueue,
                 myPeriodogram[i] = myPower;
             }
 
-            auto myMelFilteredValues{
+            auto myMelFilteredEnergies{
                 dotWithMelFilters<NUM_BARS, FFT_POINTS_REAL>(myPeriodogram)};
 
-            auto myMinMel{*std::min_element(myMelFilteredValues.begin(),
-                                            myMelFilteredValues.end())};
-            auto myMaxMel{*std::max_element(myMelFilteredValues.begin(),
-                                            myMelFilteredValues.end())};
+            auto myMinEnergy{*std::min_element(myMelFilteredEnergies.begin(),
+                                               myMelFilteredEnergies.end())};
+            auto myMaxEnergy{*std::max_element(myMelFilteredEnergies.begin(),
+                                               myMelFilteredEnergies.end())};
 
-            FreqBarPositionsT<NUM_BARS> myNewPositions{};
+            VisualizerBarPositionsT<NUM_BARS> myNewPositions{};
             for (size_t i{0}; i < NUM_BARS; ++i)
             {
-                auto myScaledMel{(myMelFilteredValues[i] - myMinMel) /
-                                 (myMaxMel - myMinMel)};
-                auto myNewPosition{std::round((NUM_ROWS - 1) * myScaledMel)};
+                auto myScaledEnergy{(myMelFilteredEnergies[i] - myMinEnergy) /
+                                    (myMaxEnergy - myMinEnergy)};
+                auto myNewPosition{(NUM_ROWS - 1) -
+                                   std::round((NUM_ROWS - 1) * myScaledEnergy)};
                 myNewPositions[i] = myNewPosition;
             }
 
-            if (aBarUpdateQueue.empty())
-            {
-                aBarUpdateQueue.push(myNewPositions);
-            }
+            aBarUpdateQueue.push(myNewPositions);
         }
     }
 }
 
-template <typename FreqBarsT> void animate(FreqBarsT &aFreqBars)
+template <typename VisualizerT> void animate(VisualizerT &aVisualizer)
 {
     while (true)
     {
-        aFreqBars.animate();
+        aVisualizer.animate();
     }
-}
-
-BufferT generateSampledSineWave(double aFrequency)
-{
-    BufferT mySamples{};
-    for (size_t i{0}; i < SAMPLES_PER_BUFFER; ++i)
-    {
-        mySamples[i] = std::sin(2 * M_PI * aFrequency * SAMPLE_PERIOD * i);
-    }
-
-    return mySamples;
 }
 
 int main(int argc, char *argv[])
@@ -151,20 +132,21 @@ int main(int argc, char *argv[])
 
     static constexpr size_t NUM_BARS{16};
     static constexpr size_t NUM_COLORS_PER_GRADIENT{8};
-    static constexpr size_t ANIMATION_SPEED{4};
+    static constexpr size_t ANIMATION_SPEED{2};
     static constexpr size_t MAX_ANIMATION_FRAMES{
-        NUM_ROWS / ANIMATION_SPEED}; // TODO: duplicated in FreqBarsRandom
+        NUM_ROWS / ANIMATION_SPEED}; // TODO: duplicated in Visualizer
 
-    FreqBarsUpdateQueueT<NUM_BARS> myBarUpdateQueue{
+    VisualizerUpdateQueueT<NUM_BARS> myBarUpdateQueue{
         FREQ_BAR_UPDATE_QUEUE_DEPTH};
-    using FreqBarsT =
-        FreqBarsRandom<NUM_BARS, NUM_COLORS_PER_GRADIENT, ANIMATION_SPEED>;
-    FreqBarsT myFreqBars{myMatrixOptions, myRuntimeOptions, myBarUpdateQueue};
+    using VisualizerT =
+        Visualizer<NUM_BARS, NUM_COLORS_PER_GRADIENT, ANIMATION_SPEED>;
+    VisualizerT myVisualizer{myMatrixOptions, myRuntimeOptions,
+                             myBarUpdateQueue};
 
-    boost::thread myFreqBarsThread(animate<FreqBarsT>, std::ref(myFreqBars));
+    boost::thread myVisualizerThread(animate<VisualizerT>,
+                                     std::ref(myVisualizer));
 
-    /****************************/
-    portaudio::AutoSystem autoSys; // TODO: Needed?
+    portaudio::AutoSystem myAutoSystem; // TODO: What does this do?
     portaudio::System &mySystem{portaudio::System::instance()};
 
     portaudio::DirectionSpecificStreamParameters myInputStreamParams{
@@ -184,11 +166,9 @@ int main(int argc, char *argv[])
     Recorder myRecorder{myAudioQueue, IS_STREAMING_MODE};
     RecorderStream myRecorderStream{myRecorder, myStreamParams};
 
-    /****************************/
-
-    boost::thread myRandomPosGenThread(genRandomPositions<NUM_BARS>,
-                                       std::ref(myAudioQueue),
-                                       std::ref(myBarUpdateQueue));
+    boost::thread myPositionUpdateThread(updatePositions<NUM_BARS>,
+                                         std::ref(myAudioQueue),
+                                         std::ref(myBarUpdateQueue));
 
     myRecorderStream.start();
 
@@ -198,8 +178,7 @@ int main(int argc, char *argv[])
     printf("Press <CTRL-C> to exit and reset LEDs\n");
     while (!InterruptReceived)
     {
-        // myAudioQueue.push(generateSampledSineWave(1000));
-        // boost::this_thread::sleep_for(boost::chrono::seconds{5});
+        boost::this_thread::sleep_for(boost::chrono::seconds{2});
     }
 
     printf("\%s. Exiting.\n",

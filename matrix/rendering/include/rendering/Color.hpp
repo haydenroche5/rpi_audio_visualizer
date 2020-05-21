@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <ostream>
 
 namespace matrix
 {
@@ -34,6 +35,8 @@ public:
     void setRed(ChannelT aValue);
     void setGreen(ChannelT aValue);
     void setBlue(ChannelT aValue);
+
+    friend std::ostream &operator<<(std::ostream &aStream, const Color &aColor);
 };
 } // namespace rendering
 } // namespace matrix
