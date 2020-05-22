@@ -32,5 +32,33 @@ using BarQueueT = boost::lockfree::spsc_queue<std::pair<size_t, double>>;
 using SamplesArrayT = Array::array1<double>;
 using FftInputArrayT = SamplesArrayT;
 using FftOutputArrayT = Array::array1<Complex>;
+
+template <size_t NUM_OCTAVES>
+constexpr std::array<int, NUM_OCTAVES> createOctaveBoundaries()
+{
+    // float MAX_FREQ{FFT_POINTS_REAL * FFT_FUNDAMENTAL_FREQ};
+    float MAX_FREQ{1000};
+    std::array<int, NUM_OCTAVES> myOctaveBoundaries{};
+
+    for (size_t i{1}; i < NUM_OCTAVES + 1; ++i)
+    {
+        float myDenom{0};
+        if (i != NUM_OCTAVES)
+        {
+            myDenom = 2 << (NUM_OCTAVES - i - 1);
+        }
+        else
+        {
+            myDenom = 1;
+        }
+
+        auto myFreq{MAX_FREQ / myDenom};
+
+        myOctaveBoundaries[i - 1] =
+            static_cast<int>(std::floor(myFreq / FFT_FUNDAMENTAL_FREQ));
+    }
+
+    return myOctaveBoundaries;
+}
 } // namespace audio
 } // namespace matrix

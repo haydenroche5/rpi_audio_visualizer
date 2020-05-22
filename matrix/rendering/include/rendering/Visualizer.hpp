@@ -15,6 +15,7 @@ namespace rendering
 template <size_t NUM_BARS, size_t NUM_COLORS_PER_GRADIENT, int ANIMATION_SPEED>
 class Visualizer
 {
+    static constexpr float SMOOTHING_FACTOR{0.1};
     static constexpr size_t NUM_GRADIENTS{4};
     static constexpr size_t TOTAL_COLORS{NUM_COLORS_PER_GRADIENT *
                                          NUM_GRADIENTS};
@@ -81,7 +82,6 @@ public:
         for (size_t i{0}; i < NUM_BARS; ++i)
         {
             int myDistance{theNextPositions[i] - theCurrentBarPositions[i]};
-
             if (myDistance == 0)
             {
                 continue;
@@ -103,6 +103,15 @@ public:
         }
     }
 
+    void smoothNextPositions()
+    {
+        for (size_t i{0}; i < NUM_BARS; ++i)
+        {
+            theNextPositions[i] = theCurrentBarPositions[i] * SMOOTHING_FACTOR +
+                                  theNextPositions[i] * (1 - SMOOTHING_FACTOR);
+        }
+    }
+
     void animate()
     {
         if (theUpdateQueue.read_available() < 1)
@@ -113,6 +122,7 @@ public:
         theNextPositions = theUpdateQueue.front();
         theUpdateQueue.pop();
 
+        // smoothNextPositions();
         updateBarPositions();
 
         while (animating())

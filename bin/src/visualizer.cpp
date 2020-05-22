@@ -17,7 +17,7 @@
 #include <getopt.h>
 #include <iostream>
 #include <signal.h>
-#include <thread>
+#include <thread> // TODO: Needed?
 
 using namespace rgb_matrix;
 using namespace matrix::rendering;
@@ -26,27 +26,20 @@ using namespace matrix::audio;
 volatile bool InterruptReceived{false};
 static void InterruptHandler(int signo) { InterruptReceived = true; }
 
-template <size_t NUM_BARS, size_t FFT_POINTS_REAL>
-std::array<float, NUM_BARS>
-dotWithMelFilters(const std::array<float, FFT_POINTS_REAL> &aPeriodogram)
-{
-    std::array<float, NUM_BARS> mySums{};
+float MaxDbSeen{0};
+float MinDbSeen{1000};
 
-    for (size_t i{0}; i < NUM_BARS; ++i)
-    {
-        const auto &myFilter{MEL_FILTERS[i]};
-        float mySum{0};
+constexpr float MIN_DB{-128};
+constexpr float MAX_DB{50};
 
-        for (size_t j{0}; j < FFT_POINTS_REAL; ++j)
-        {
-            mySum += myFilter[j] * aPeriodogram[j];
-        }
+static constexpr size_t NUM_BARS{16};
+static constexpr size_t NUM_COLORS_PER_GRADIENT{8};
+static constexpr size_t ANIMATION_SPEED{2};
+static constexpr size_t MAX_ANIMATION_FRAMES{
+    NUM_ROWS / ANIMATION_SPEED}; // TODO: duplicated in Visualizer
+// static constexpr float PRE_EMPHASIS_FACTOR{0.9};
 
-        mySums[i] = mySum;
-    }
-
-    return mySums;
-}
+std::atomic<bool> Terminate{false};
 
 template <size_t NUM_BARS>
 void updatePositions(AudioQueueT &aAudioQueue,
@@ -56,11 +49,20 @@ void updatePositions(AudioQueueT &aAudioQueue,
     FftOutputArrayT myFftOutput{FFT_POINTS_REAL, FFT_ALIGNMENT};
     std::array<float, FFT_POINTS_REAL> myPeriodogram{};
 
-    while (true)
+    while (!Terminate)
     {
         if (aAudioQueue.read_available() > 0)
         {
             const auto &myBuffer{aAudioQueue.front()};
+            // BufferT myPreEmphasizedBuffer{};
+
+            // myPreEmphasizedBuffer[0] = myBuffer[0];
+            // for (size_t i{1}; i < SAMPLES_PER_BUFFER; ++i)
+            // {
+            //     myPreEmphasizedBuffer[i] =
+            //         myBuffer[i] - PRE_EMPHASIS_FACTOR * myBuffer[i - 1];
+            // }
+
             for (size_t i{0}; i < SAMPLES_PER_BUFFER; ++i)
             {
                 myFftInput[i] =
@@ -77,25 +79,38 @@ void updatePositions(AudioQueueT &aAudioQueue,
             for (size_t i{0}; i < FFT_POINTS_REAL; ++i)
             {
                 auto myPower{std::pow(std::abs(myFftOutput[i]), 2) /
-                             FFT_POINTS_REAL};
+                             FFT_POINTS};
                 myPeriodogram[i] = myPower;
             }
-
-            auto myMelFilteredEnergies{
-                dotWithMelFilters<NUM_BARS, FFT_POINTS_REAL>(myPeriodogram)};
-
-            auto myMinEnergy{*std::min_element(myMelFilteredEnergies.begin(),
-                                               myMelFilteredEnergies.end())};
-            auto myMaxEnergy{*std::max_element(myMelFilteredEnergies.begin(),
-                                               myMelFilteredEnergies.end())};
 
             VisualizerBarPositionsT<NUM_BARS> myNewPositions{};
             for (size_t i{0}; i < NUM_BARS; ++i)
             {
-                auto myScaledEnergy{(myMelFilteredEnergies[i] - myMinEnergy) /
-                                    (myMaxEnergy - myMinEnergy)};
+                const auto &myFilter{MEL_FILTERS[i]};
+                float mySum{0};
+
+                for (size_t j{0}; j < FFT_POINTS_REAL; ++j)
+                {
+                    mySum += myFilter[j] * myPeriodogram[j];
+                }
+
+                auto myDb{20 * std::log10(mySum)};
+
+                // if (myDb > MaxDbSeen)
+                // {
+                //     MaxDbSeen = myDb;
+                //     std::cout << "MAX db seen: " << MaxDbSeen << std::endl;
+                // }
+                // if (myDb < MinDbSeen)
+                // {
+                //     MinDbSeen = myDb;
+                //     std::cout << "MIN db seen: " << MinDbSeen << std::endl;
+                // }
+
+                auto myScaledDb{(myDb - MIN_DB) / (MAX_DB - MIN_DB)};
                 auto myNewPosition{(NUM_ROWS - 1) -
-                                   std::round((NUM_ROWS - 1) * myScaledEnergy)};
+                                   std::round((NUM_ROWS - 1) * myScaledDb)};
+
                 myNewPositions[i] = myNewPosition;
             }
 
@@ -106,7 +121,7 @@ void updatePositions(AudioQueueT &aAudioQueue,
 
 template <typename VisualizerT> void animate(VisualizerT &aVisualizer)
 {
-    while (true)
+    while (!Terminate)
     {
         aVisualizer.animate();
     }
@@ -129,12 +144,6 @@ int main(int argc, char *argv[])
     {
         return 1;
     }
-
-    static constexpr size_t NUM_BARS{16};
-    static constexpr size_t NUM_COLORS_PER_GRADIENT{8};
-    static constexpr size_t ANIMATION_SPEED{2};
-    static constexpr size_t MAX_ANIMATION_FRAMES{
-        NUM_ROWS / ANIMATION_SPEED}; // TODO: duplicated in Visualizer
 
     VisualizerUpdateQueueT<NUM_BARS> myBarUpdateQueue{
         FREQ_BAR_UPDATE_QUEUE_DEPTH};
@@ -175,13 +184,20 @@ int main(int argc, char *argv[])
     signal(SIGTERM, InterruptHandler);
     signal(SIGINT, InterruptHandler);
 
-    printf("Press <CTRL-C> to exit and reset LEDs\n");
+    std::cout << "Press <CTRL-C> to exit and reset LEDs" << std::endl;
+
     while (!InterruptReceived)
     {
         boost::this_thread::sleep_for(boost::chrono::seconds{2});
     }
 
-    printf("\%s. Exiting.\n",
-           InterruptReceived ? "Received CTRL-C" : "Timeout reached");
+    std::cout << "Done." << std::endl;
+    std::cout.flush();
+
+    Terminate = true;
+
+    myVisualizerThread.join();
+    myPositionUpdateThread.join();
+
     return 0;
 }

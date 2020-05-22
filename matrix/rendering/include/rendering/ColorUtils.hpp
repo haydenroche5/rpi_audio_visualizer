@@ -57,6 +57,7 @@ static constexpr GradientT<NUM_COLORS> createGradient()
     return myGradientColors;
 }
 
+// TODO: This NUM_GRADIENTS param serves no purpose
 template <size_t NUM_GRADIENTS, size_t NUM_COLORS_PER_GRADIENT>
 constexpr std::array<Color, NUM_GRADIENTS * NUM_COLORS_PER_GRADIENT>
 createRowColors()
