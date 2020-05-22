@@ -63,10 +63,10 @@ constexpr std::array<Color, NUM_GRADIENTS * NUM_COLORS_PER_GRADIENT>
 createRowColors()
 {
     std::array<GradientT<NUM_COLORS_PER_GRADIENT>, NUM_GRADIENTS> myGradients{
-        createGradient<255, 0, 0, 255, 254, 0, NUM_COLORS_PER_GRADIENT>(),
+        createGradient<255, 0, 0, 255, 127, 0, NUM_COLORS_PER_GRADIENT>(),
+        createGradient<255, 128, 0, 255, 254, 0, NUM_COLORS_PER_GRADIENT>(),
         createGradient<255, 255, 0, 1, 255, 0, NUM_COLORS_PER_GRADIENT>(),
-        createGradient<0, 255, 0, 0, 129, 0, NUM_COLORS_PER_GRADIENT>(),
-        createGradient<0, 128, 0, 0, 0, 0, NUM_COLORS_PER_GRADIENT>()};
+        createGradient<0, 255, 0, 0, 0, 0, NUM_COLORS_PER_GRADIENT>()};
 
     std::array<Color, NUM_GRADIENTS * NUM_COLORS_PER_GRADIENT> myRowColors{};
     for (size_t i{0}; i < NUM_GRADIENTS; ++i)
