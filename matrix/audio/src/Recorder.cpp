@@ -29,7 +29,13 @@ int Recorder::paCallbackFun(const void *aInputBuffer, void *,
     std::memcpy(theCurrentBuffer.data(),
                 static_cast<const float *>(aInputBuffer),
                 SAMPLES_PER_BUFFER * sizeof(float));
-    theQueue.push(theCurrentBuffer);
+
+    auto myPushSuccess{theQueue.push(theCurrentBuffer)};
+
+    if (!myPushSuccess)
+    {
+        std::cout << "Failed to push audio." << std::endl;
+    }
 
     // TODO: Stream vs. non-stream should be a compile time thing, i.e. set with
     // a template parameter, and then this code can be constexpr-if'ed

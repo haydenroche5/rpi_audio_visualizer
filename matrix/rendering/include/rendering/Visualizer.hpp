@@ -15,7 +15,7 @@ namespace rendering
 template <size_t NUM_BARS, size_t NUM_COLORS_PER_GRADIENT, int ANIMATION_SPEED>
 class Visualizer
 {
-    static constexpr float SMOOTHING_FACTOR{0.1};
+    static constexpr float SMOOTHING_FACTOR{0.2};
     static constexpr size_t NUM_GRADIENTS{4};
     static constexpr size_t TOTAL_COLORS{NUM_COLORS_PER_GRADIENT *
                                          NUM_GRADIENTS};
@@ -47,13 +47,18 @@ private:
     FrameBufferT *theNextFrameBuffer{nullptr};
     std::array<bool, NUM_BARS> theBarsAnimating{};
 
+    bool theEnableProfiling;
+    std::chrono::milliseconds theWortCaseDuration{
+        std::chrono::milliseconds::min()};
+
 public:
     Visualizer(rgb_matrix::RGBMatrix::Options aMatrixOptions,
                rgb_matrix::RuntimeOptions aRuntimeOptions,
-               VisualizerUpdateQueueT<NUM_BARS> &aUpdateQueue)
+               VisualizerUpdateQueueT<NUM_BARS> &aUpdateQueue,
+               bool aEnableProfiling = false)
         : theMatrix{rgb_matrix::CreateMatrixFromOptions(aMatrixOptions,
                                                         aRuntimeOptions)},
-          theUpdateQueue{aUpdateQueue}
+          theUpdateQueue{aUpdateQueue}, theEnableProfiling{aEnableProfiling}
     {
         if (theMatrix == nullptr)
         {
@@ -62,6 +67,15 @@ public:
         }
 
         theNextFrameBuffer = theMatrix->CreateFrameCanvas();
+    }
+
+    ~Visualizer()
+    {
+        if (theEnableProfiling)
+        {
+            std::cout << "Worst case animation duration: "
+                      << theWortCaseDuration.count() << "[ms]" << std::endl;
+        }
     }
 
     bool animating() const
@@ -119,10 +133,16 @@ public:
             return;
         }
 
+        std::chrono::steady_clock::time_point myStart{};
+        if (theEnableProfiling)
+        {
+            myStart = std::chrono::steady_clock::now();
+        }
+
         theNextPositions = theUpdateQueue.front();
         theUpdateQueue.pop();
 
-        // smoothNextPositions();
+        smoothNextPositions();
         updateBarPositions();
 
         while (animating())
@@ -165,6 +185,22 @@ public:
             }
             updateBarPositions();
             theNextFrameBuffer = theMatrix->SwapOnVSync(theNextFrameBuffer);
+        }
+
+        if (theEnableProfiling)
+        {
+            auto myEnd{std::chrono::steady_clock::now()};
+            auto myDuration{
+                std::chrono::duration_cast<std::chrono::milliseconds>(myEnd -
+                                                                      myStart)};
+
+            if (myDuration > theWortCaseDuration)
+            {
+                theWortCaseDuration = myDuration;
+            }
+
+            std::cout << "Animation duration: " << myDuration.count() << "[ms]"
+                      << std::endl;
         }
     }
 };

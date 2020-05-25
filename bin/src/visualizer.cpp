@@ -29,17 +29,21 @@ static void InterruptHandler(int signo) { InterruptReceived = true; }
 float MaxDbSeen{0};
 float MinDbSeen{1000};
 
-constexpr float MIN_DB{-128};
-constexpr float MAX_DB{50};
+constexpr float MIN_MAGNITUDE{0};
+constexpr float MAX_MAGNITUDE{20};
 
 static constexpr size_t NUM_BARS{16};
 static constexpr size_t NUM_COLORS_PER_GRADIENT{8};
-static constexpr size_t ANIMATION_SPEED{2};
+static constexpr size_t ANIMATION_SPEED{4};
 static constexpr size_t MAX_ANIMATION_FRAMES{
     NUM_ROWS / ANIMATION_SPEED}; // TODO: duplicated in Visualizer
 // static constexpr float PRE_EMPHASIS_FACTOR{0.9};
 
 std::atomic<bool> Terminate{false};
+
+std::array<float, NUM_BARS> OCTAVE_BOUNDARIES{
+    18.581,  26.278,  37.163,  52.556,  74.325,   105.112,  148.651,  210.224,
+    297.302, 420.448, 594.604, 840.896, 1189.207, 1681.793, 2378.414, 3363.586};
 
 template <size_t NUM_BARS>
 void updatePositions(AudioQueueT &aAudioQueue,
@@ -49,19 +53,13 @@ void updatePositions(AudioQueueT &aAudioQueue,
     FftOutputArrayT myFftOutput{FFT_POINTS_REAL, FFT_ALIGNMENT};
     std::array<float, FFT_POINTS_REAL> myPeriodogram{};
 
+    VisualizerBarPositionsT<NUM_BARS> myOldPositions{};
+
     while (!Terminate)
     {
         if (aAudioQueue.read_available() > 0)
         {
             const auto &myBuffer{aAudioQueue.front()};
-            // BufferT myPreEmphasizedBuffer{};
-
-            // myPreEmphasizedBuffer[0] = myBuffer[0];
-            // for (size_t i{1}; i < SAMPLES_PER_BUFFER; ++i)
-            // {
-            //     myPreEmphasizedBuffer[i] =
-            //         myBuffer[i] - PRE_EMPHASIS_FACTOR * myBuffer[i - 1];
-            // }
 
             for (size_t i{0}; i < SAMPLES_PER_BUFFER; ++i)
             {
@@ -76,45 +74,56 @@ void updatePositions(AudioQueueT &aAudioQueue,
             fftwpp::rcfft1d myFft(SAMPLES_PER_BUFFER, myFftInput, myFftOutput);
             myFft.fft(myFftInput, myFftOutput);
 
+            size_t myOctaveBoundaryIdx{0};
+            std::array<float, NUM_BARS> myMaxMagnitudePerOctave{};
+            float myMaxMagnitude{0};
+
             for (size_t i{0}; i < FFT_POINTS_REAL; ++i)
             {
-                auto myPower{std::pow(std::abs(myFftOutput[i]), 2) /
-                             FFT_POINTS};
-                myPeriodogram[i] = myPower;
+                auto myFrequency{i * FFT_FUNDAMENTAL_FREQ};
+
+                if (myFrequency >= OCTAVE_BOUNDARIES[myOctaveBoundaryIdx])
+                {
+                    if (myOctaveBoundaryIdx == NUM_BARS - 1)
+                    {
+                        break;
+                    }
+
+                    myMaxMagnitudePerOctave[myOctaveBoundaryIdx] =
+                        myMaxMagnitude;
+                    myMaxMagnitude = 0;
+                    ++myOctaveBoundaryIdx;
+                }
+
+                auto myMagnitude{std::abs(myFftOutput[i])};
+
+                if (myMagnitude > myMaxMagnitude)
+                {
+                    myMaxMagnitude = std::abs(myFftOutput[i]);
+                }
             }
 
             VisualizerBarPositionsT<NUM_BARS> myNewPositions{};
             for (size_t i{0}; i < NUM_BARS; ++i)
             {
-                const auto &myFilter{MEL_FILTERS[i]};
-                float mySum{0};
-
-                for (size_t j{0}; j < FFT_POINTS_REAL; ++j)
-                {
-                    mySum += myFilter[j] * myPeriodogram[j];
-                }
-
-                auto myDb{20 * std::log10(mySum)};
-
-                // if (myDb > MaxDbSeen)
-                // {
-                //     MaxDbSeen = myDb;
-                //     std::cout << "MAX db seen: " << MaxDbSeen << std::endl;
-                // }
-                // if (myDb < MinDbSeen)
-                // {
-                //     MinDbSeen = myDb;
-                //     std::cout << "MIN db seen: " << MinDbSeen << std::endl;
-                // }
-
-                auto myScaledDb{(myDb - MIN_DB) / (MAX_DB - MIN_DB)};
-                auto myNewPosition{(NUM_ROWS - 1) -
-                                   std::round((NUM_ROWS - 1) * myScaledDb)};
+                auto myScaledMagnitude{
+                    (myMaxMagnitudePerOctave[i] - MIN_MAGNITUDE) /
+                    (MAX_MAGNITUDE - MIN_MAGNITUDE)};
+                auto myNewPosition{
+                    (NUM_ROWS - 1) -
+                    std::round((NUM_ROWS - 1) * myScaledMagnitude)};
 
                 myNewPositions[i] = myNewPosition;
             }
 
-            aBarUpdateQueue.push(myNewPositions);
+            myOldPositions = myNewPositions;
+
+            auto myUpdateSuccess{aBarUpdateQueue.push(myNewPositions)};
+
+            if (!myUpdateSuccess)
+            {
+                std::cout << "Failed to update bar positions." << std::endl;
+            }
         }
     }
 }
@@ -150,7 +159,7 @@ int main(int argc, char *argv[])
     using VisualizerT =
         Visualizer<NUM_BARS, NUM_COLORS_PER_GRADIENT, ANIMATION_SPEED>;
     VisualizerT myVisualizer{myMatrixOptions, myRuntimeOptions,
-                             myBarUpdateQueue};
+                             myBarUpdateQueue, true};
 
     boost::thread myVisualizerThread(animate<VisualizerT>,
                                      std::ref(myVisualizer));
