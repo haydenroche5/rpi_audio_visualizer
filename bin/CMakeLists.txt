@@ -56,14 +56,8 @@ target_link_libraries(draw_gradients
 
 add_executable(visualizer ${src_dir}/visualizer.cpp)
 set_property(TARGET visualizer PROPERTY RUNTIME_OUTPUT_DIRECTORY ${build_dir})
-target_include_directories(visualizer PRIVATE
-    ${Boost_INCLUDE_DIRS}
-    ${led_matrix_include_dirs}
-    ${rendering_include_dirs}
-)
 target_link_libraries(visualizer
     Boost::thread
-    Boost::chrono
     audio
     led_matrix
     rendering
