@@ -20,6 +20,16 @@ target_link_libraries(print_fft_mag_samples
     audio
     Boost::thread
 )
+
+add_executable(visualizer ${src_dir}/visualizer.cpp)
+set_property(TARGET visualizer PROPERTY RUNTIME_OUTPUT_DIRECTORY ${build_dir})
+target_link_libraries(visualizer
+    audio
+    Boost::thread
+    led_matrix
+    rendering
+)
+
 # get_target_property(print_fft_mag_samples_link_libs print_fft_mag_samples INTERFACE_LINK_LIBRARIES)
 # message("print_fft_mag_samples_link_libs: ${print_fft_mag_samples_link_libs}")
 
@@ -50,15 +60,6 @@ target_include_directories(draw_gradients PRIVATE
     ${rendering_include_dirs}
 )
 target_link_libraries(draw_gradients
-    led_matrix
-    rendering
-)
-
-add_executable(visualizer ${src_dir}/visualizer.cpp)
-set_property(TARGET visualizer PROPERTY RUNTIME_OUTPUT_DIRECTORY ${build_dir})
-target_link_libraries(visualizer
-    Boost::thread
-    audio
     led_matrix
     rendering
 )
