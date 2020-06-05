@@ -15,7 +15,6 @@
 #include <chrono>
 #include <getopt.h>
 #include <iostream>
-// #include <thread> // TODO: Needed?
 
 using namespace rgb_matrix;
 using namespace matrix::rendering;
@@ -36,6 +35,7 @@ static constexpr std::array<float, NUM_BARS> OCTAVE_BOUNDARIES{
 
 std::atomic<bool> Terminate{false};
 
+// TODO: Overlap windows by 50%
 template <size_t NUM_BARS>
 void updatePositions(AudioQueueT &aAudioQueue,
                      VisualizerUpdateQueueT<NUM_BARS> &aBarUpdateQueue)
@@ -129,113 +129,36 @@ template <typename VisualizerT> void animate(VisualizerT &aVisualizer)
     }
 }
 
-// int main(int argc, char *argv[])
-// {
-//     portaudio::AutoSystem myAutoSystem;
-//     portaudio::System &mySystem{portaudio::System::instance()};
-
-//     int myDeviceIdx{-1};
-//     for (int i{0}; i < mySystem.deviceCount(); ++i)
-//     {
-//         std::string myDeviceName{mySystem.deviceByIndex(i).name()};
-//         if (myDeviceName.find("USB Camera") != std::string::npos)
-//         {
-//             myDeviceIdx = i;
-//             break;
-//         }
-//     }
-
-//     if (myDeviceIdx == -1)
-//     {
-//         std::cout << "Device not found. Exiting." << std::endl;
-//         return 1;
-//     }
-
-//     const auto &myDevice{mySystem.deviceByIndex(myDeviceIdx)};
-
-//     portaudio::DirectionSpecificStreamParameters myInputStreamParams{
-//         mySystem.defaultInputDevice(),
-//         CHANNELS,
-//         SAMPLE_FORMAT,
-//         INTERLEAVED,
-//         mySystem.defaultInputDevice().defaultLowInputLatency(),
-//         nullptr};
-//     portaudio::StreamParameters myStreamParams{
-//         myInputStreamParams,
-//         portaudio::DirectionSpecificStreamParameters::null(), SAMPLE_RATE,
-//         FRAMES_PER_BUFFER, STREAM_FLAGS};
-
-//     rgb_matrix::RGBMatrix::Options myMatrixOptions;
-//     rgb_matrix::RuntimeOptions myRuntimeOptions;
-
-//     // These are the defaults when no command-line flags are given.
-//     myMatrixOptions.rows = 32;
-//     myMatrixOptions.chain_length = 1;
-//     myMatrixOptions.parallel = 1;
-
-//     // First things first: extract the command line flags that contain
-//     // relevant matrix options.
-//     if (!ParseOptionsFromFlags(&argc, &argv, &myMatrixOptions,
-//                                &myRuntimeOptions))
-//     {
-//         return 1;
-//     }
-
-//     VisualizerUpdateQueueT<NUM_BARS> myBarUpdateQueue{
-//         FREQ_BAR_UPDATE_QUEUE_DEPTH};
-//     using VisualizerT =
-//         Visualizer<NUM_BARS, NUM_COLORS_PER_GRADIENT, ANIMATION_SPEED>;
-//     VisualizerT myVisualizer{myMatrixOptions, myRuntimeOptions,
-//                              myBarUpdateQueue, false};
-
-//     boost::thread myVisualizerThread(animate<VisualizerT>,
-//                                      std::ref(myVisualizer));
-
-//     // no crash up to here with sudo
-
-//     AudioQueueT myAudioQueue{AUDIO_QUEUE_DEPTH};
-//     constexpr bool IS_STREAMING_MODE{true};
-//     Recorder myRecorder{myAudioQueue, IS_STREAMING_MODE};
-//     RecorderStream myRecorderStream{myRecorder, myStreamParams};
-
-//     // boost::thread myPositionUpdateThread(updatePositions<NUM_BARS>,
-//     //                                      std::ref(myAudioQueue),
-//     //                                      std::ref(myBarUpdateQueue));
-
-//     // myRecorderStream.start();
-
-//     // std::cout << "Press 'q' to exit and reset LEDs" << std::endl;
-
-//     // while (!Terminate)
-//     // {
-//     //     auto myInputChar{std::cin.get()};
-
-//     //     if (myInputChar == 'q')
-//     //     {
-//     //         Terminate = true;
-//     //     }
-//     // }
-
-//     // std::cout << "Done." << std::endl;
-//     // std::cout.flush();
-
-//     // myVisualizerThread.join();
-//     // myPositionUpdateThread.join();
-
-//     return 0;
-// }
-
 int main(int argc, char *argv[])
 {
     portaudio::AutoSystem autoSys;
     portaudio::System &mySystem{portaudio::System::instance()};
 
+    int myDeviceIdx{-1};
+    for (int i{0}; i < mySystem.deviceCount(); ++i)
+    {
+        std::string myDeviceName{mySystem.deviceByIndex(i).name()};
+        if (myDeviceName.find("USB Camera") != std::string::npos)
+        {
+            myDeviceIdx = i;
+            break;
+        }
+    }
+
+    if (myDeviceIdx == -1)
+    {
+        std::cout << "Device not found. Exiting." << std::endl;
+        return 1;
+    }
+
+    const auto &myDevice{mySystem.deviceByIndex(myDeviceIdx)};
+
     portaudio::DirectionSpecificStreamParameters myInputStreamParams{
-        mySystem.defaultInputDevice(),
+        myDevice,
         CHANNELS,
         SAMPLE_FORMAT,
         INTERLEAVED,
-        mySystem.defaultInputDevice().defaultLowInputLatency(),
+        myDevice.defaultLowInputLatency(),
         nullptr};
     portaudio::StreamParameters myStreamParams{
         myInputStreamParams,
@@ -291,7 +214,6 @@ int main(int argc, char *argv[])
     }
 
     std::cout << "Done." << std::endl;
-    std::cout.flush();
 
     myVisualizerThread.join();
     myPositionUpdateThread.join();
