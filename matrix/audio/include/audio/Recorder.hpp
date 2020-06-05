@@ -11,7 +11,7 @@ class Recorder : public portaudio::CallbackInterface
 {
 public:
     Recorder(AudioQueueT &aQueue, bool aIsStreamingMode = true,
-             size_t aSecondsToRecord = 0);
+             size_t aSecondsToRecord = 0, bool aVerbose = false);
     bool isDoneRecording() const;
 
 private:
@@ -21,6 +21,7 @@ private:
     size_t theSamplesToRecord;
     size_t theSamplesRecorded{0};
     bool theIsDoneRecording{false};
+    bool theVerbose{false};
 
     int paCallbackFun(const void *aInputBuffer, void *, unsigned long,
                       const PaStreamCallbackTimeInfo *,

@@ -1,24 +1,29 @@
 #include "Recorder.hpp"
 #include <cstring>
+#include <stdexcept>
 
 namespace matrix
 {
 namespace audio
 {
 Recorder::Recorder(AudioQueueT &aQueue, bool aIsStreamingMode,
-                   size_t aSecondsToRecord)
+                   size_t aSecondsToRecord, bool aVerbose)
     : theQueue{aQueue}, theIsStreamingMode{aIsStreamingMode},
-      theSamplesToRecord{aSecondsToRecord * SAMPLE_RATE}
+      theSamplesToRecord{aSecondsToRecord * SAMPLE_RATE}, theVerbose{aVerbose}
 {
-    // TODO: shouldn't allow aSecondsToRecord to be non-zero if aIsStreamingMode
-    // is true
+    if (aSecondsToRecord != 0 && aIsStreamingMode)
+    {
+        throw std::invalid_argument{
+            "matrix::audio::Recorder::Recorder: Can't enable streaming mode if "
+            "seconds to record is non-zero."};
+    }
 }
 
 bool Recorder::isDoneRecording() const { return theIsDoneRecording; }
 
 int Recorder::paCallbackFun(const void *aInputBuffer, void *,
                             unsigned long aFrameCount,
-                            const PaStreamCallbackTimeInfo *,
+                            const PaStreamCallbackTimeInfo *aTimeInfo,
                             PaStreamCallbackFlags aStatusFlags)
 {
     if (theIsDoneRecording)
@@ -32,14 +37,19 @@ int Recorder::paCallbackFun(const void *aInputBuffer, void *,
 
     auto myPushSuccess{theQueue.push(theCurrentBuffer)};
 
-    if (!myPushSuccess)
+    if (theVerbose)
     {
-        std::cout << "Failed to push audio." << std::endl;
+        std::cout << "Current time - ADC time: "
+                  << (aTimeInfo->currentTime - aTimeInfo->inputBufferAdcTime)
+                  << std::endl;
     }
 
-    // TODO: Stream vs. non-stream should be a compile time thing, i.e. set with
-    // a template parameter, and then this code can be constexpr-if'ed
-    // Same with the conditional at the start of this function.
+    if (theVerbose && !myPushSuccess)
+    {
+        std::cout << "Failed to push audio. (" << aFrameCount << ")"
+                  << std::endl;
+    }
+
     if (!theIsStreamingMode)
     {
         theSamplesRecorded += SAMPLES_PER_BUFFER;
