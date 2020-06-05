@@ -48,8 +48,8 @@ private:
     std::array<bool, NUM_BARS> theBarsAnimating{};
 
     bool theEnableProfiling;
-    std::chrono::milliseconds theWortCaseDuration{
-        std::chrono::milliseconds::min()};
+    std::chrono::microseconds theWortCaseDuration{
+        std::chrono::microseconds::min()};
 
 public:
     Visualizer(rgb_matrix::RGBMatrix::Options aMatrixOptions,
@@ -74,7 +74,7 @@ public:
         if (theEnableProfiling)
         {
             std::cout << "Worst case animation duration: "
-                      << theWortCaseDuration.count() << "[ms]" << std::endl;
+                      << theWortCaseDuration.count() << "[us]" << std::endl;
         }
     }
 
@@ -133,12 +133,6 @@ public:
             return;
         }
 
-        std::chrono::steady_clock::time_point myStart{};
-        if (theEnableProfiling)
-        {
-            myStart = std::chrono::steady_clock::now();
-        }
-
         theNextPositions = theUpdateQueue.front();
         theUpdateQueue.pop();
 
@@ -147,6 +141,12 @@ public:
 
         while (animating())
         {
+            std::chrono::steady_clock::time_point myStartTime{};
+            if (theEnableProfiling)
+            {
+                myStartTime = std::chrono::steady_clock::now();
+            }
+
             auto myRowColorIdx{0};
             auto myRowColor{ROW_COLORS[myRowColorIdx]};
             for (int y{0}; y < NUM_ROWS; y += COLOR_HEIGHT)
@@ -184,23 +184,24 @@ public:
                 myRowColor = ROW_COLORS[myRowColorIdx];
             }
             updateBarPositions();
-            theNextFrameBuffer = theMatrix->SwapOnVSync(theNextFrameBuffer);
-        }
 
-        if (theEnableProfiling)
-        {
-            auto myEnd{std::chrono::steady_clock::now()};
-            auto myDuration{
-                std::chrono::duration_cast<std::chrono::milliseconds>(myEnd -
-                                                                      myStart)};
-
-            if (myDuration > theWortCaseDuration)
+            if (theEnableProfiling)
             {
-                theWortCaseDuration = myDuration;
+                auto myEndTime{std::chrono::steady_clock::now()};
+                auto myDuration{
+                    std::chrono::duration_cast<std::chrono::microseconds>(
+                        myEndTime - myStartTime)};
+
+                std::cout << "Animation duration: " << myDuration.count()
+                          << "[us]" << std::endl;
+
+                if (myDuration > theWortCaseDuration)
+                {
+                    theWortCaseDuration = myDuration;
+                }
             }
 
-            std::cout << "Animation duration: " << myDuration.count() << "[ms]"
-                      << std::endl;
+            theNextFrameBuffer = theMatrix->SwapOnVSync(theNextFrameBuffer);
         }
     }
 };
