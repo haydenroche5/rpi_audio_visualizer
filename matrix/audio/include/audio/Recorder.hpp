@@ -21,7 +21,7 @@ private:
     size_t theSamplesToRecord;
     size_t theSamplesRecorded{0};
     bool theIsDoneRecording{false};
-    bool theVerbose{false};
+    bool theVerbose;
 
     int paCallbackFun(const void *aInputBuffer, void *, unsigned long,
                       const PaStreamCallbackTimeInfo *,
