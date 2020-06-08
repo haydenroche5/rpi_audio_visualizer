@@ -12,7 +12,6 @@
 #include "rendering/Visualizer.hpp"
 
 #include <boost/thread.hpp>
-#include <chrono>
 #include <getopt.h>
 #include <iostream>
 
@@ -42,7 +41,6 @@ void updatePositions(AudioQueueT &aAudioQueue,
 {
     FftInputArrayT myFftInput{SAMPLES_PER_BUFFER, FFT_ALIGNMENT};
     FftOutputArrayT myFftOutput{FFT_POINTS_REAL, FFT_ALIGNMENT};
-    std::array<float, FFT_POINTS_REAL> myPeriodogram{};
     std::array<float, NUM_BARS> myMaxMagnitudePerOctave{};
 
     while (!Terminate)
