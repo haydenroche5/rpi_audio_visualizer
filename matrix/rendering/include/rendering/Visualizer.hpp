@@ -87,7 +87,6 @@ public:
                 return true;
             }
         }
-
         return false;
     }
 
@@ -95,7 +94,9 @@ public:
     {
         for (size_t i{0}; i < NUM_BARS; ++i)
         {
-            int myDistance{theNextPositions[i] - theCurrentBarPositions[i]};
+            int myDistance{static_cast<int>(theNextPositions[i]) -
+                           static_cast<int>(theCurrentBarPositions[i])};
+
             if (myDistance == 0)
             {
                 continue;
@@ -148,17 +149,17 @@ public:
             }
 
             auto myRowColorIdx{0};
-            auto myRowColor{ROW_COLORS[myRowColorIdx]};
-            for (int y{0}; y < NUM_ROWS; y += COLOR_HEIGHT)
+            for (size_t y{0}; y < NUM_ROWS; y += COLOR_HEIGHT)
             {
-                for (int myYOffset{0}; myYOffset < COLOR_HEIGHT; ++myYOffset)
+                auto myRowColor{ROW_COLORS[myRowColorIdx]};
+                for (size_t myYOffset{0}; myYOffset < COLOR_HEIGHT; ++myYOffset)
                 {
                     size_t myBarIdx{0};
-                    for (int x{0}; x < NUM_COLS; x += BAR_WIDTH)
+                    for (size_t x{0}; x < NUM_COLS; x += BAR_WIDTH)
                     {
                         if ((y + myYOffset) >= theCurrentBarPositions[myBarIdx])
                         {
-                            for (int myXOffset{0}; myXOffset < BAR_WIDTH;
+                            for (size_t myXOffset{0}; myXOffset < BAR_WIDTH;
                                  ++myXOffset)
                             {
                                 theNextFrameBuffer->SetPixel(
@@ -169,7 +170,7 @@ public:
                         }
                         else
                         {
-                            for (int myXOffset{0}; myXOffset < BAR_WIDTH;
+                            for (size_t myXOffset{0}; myXOffset < BAR_WIDTH;
                                  ++myXOffset)
                             {
                                 theNextFrameBuffer->SetPixel(
@@ -181,7 +182,6 @@ public:
                     }
                 }
                 ++myRowColorIdx;
-                myRowColor = ROW_COLORS[myRowColorIdx];
             }
             updateBarPositions();
 
