@@ -13,7 +13,7 @@ static constexpr size_t NUM_ROWS{64};
 static constexpr size_t NUM_COLS{64};
 
 template <size_t NUM_BARS>
-using VisualizerBarPositionsT = std::array<int, NUM_BARS>;
+using VisualizerBarPositionsT = std::array<size_t, NUM_BARS>;
 static constexpr size_t FREQ_BAR_UPDATE_QUEUE_DEPTH{1};
 template <size_t NUM_BARS>
 using VisualizerUpdateQueueT =
