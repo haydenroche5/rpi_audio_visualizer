@@ -14,7 +14,7 @@ static constexpr double SAMPLE_PERIOD{1.0 / SAMPLE_RATE};
 static constexpr portaudio::SampleDataFormat SAMPLE_FORMAT{portaudio::FLOAT32};
 static constexpr bool INTERLEAVED{true};
 static constexpr size_t CHANNELS{1};
-static constexpr size_t FRAMES_PER_BUFFER{1024};
+static constexpr size_t FRAMES_PER_BUFFER{512};
 static constexpr size_t SAMPLES_PER_BUFFER{CHANNELS * FRAMES_PER_BUFFER};
 static constexpr size_t FFT_POINTS{SAMPLES_PER_BUFFER};
 static constexpr size_t FFT_POINTS_REAL{SAMPLES_PER_BUFFER / 2 + 1};
