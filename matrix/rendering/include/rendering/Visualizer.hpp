@@ -15,7 +15,7 @@ namespace rendering
 template <size_t NUM_BARS, size_t NUM_COLORS_PER_GRADIENT, int ANIMATION_SPEED>
 class Visualizer
 {
-    static constexpr float SMOOTHING_FACTOR{0.2};
+    static constexpr float SMOOTHING_FACTOR{0.6};
     static constexpr size_t NUM_GRADIENTS{4};
     static constexpr size_t TOTAL_COLORS{NUM_COLORS_PER_GRADIENT *
                                          NUM_GRADIENTS};
@@ -45,7 +45,7 @@ private:
     VisualizerBarPositionsT<NUM_BARS> theNextPositions{};
     VisualizerUpdateQueueT<NUM_BARS> &theUpdateQueue;
     FrameBufferT *theNextFrameBuffer{nullptr};
-    std::array<bool, NUM_BARS> theBarsAnimating{};
+    std::bitset<NUM_BARS> theBarsAnimating{};
 
     bool theEnableProfiling;
     std::chrono::microseconds theWortCaseDuration{
@@ -66,6 +66,7 @@ public:
                 "Error constructing rgb_matrix::RGBMatrix.");
         }
 
+        theCurrentBarPositions.fill(NUM_ROWS - 1);
         theNextFrameBuffer = theMatrix->CreateFrameCanvas();
     }
 
@@ -90,34 +91,6 @@ public:
         return false;
     }
 
-    void updateBarPositions()
-    {
-        for (size_t i{0}; i < NUM_BARS; ++i)
-        {
-            int myDistance{static_cast<int>(theNextPositions[i]) -
-                           static_cast<int>(theCurrentBarPositions[i])};
-
-            if (myDistance == 0)
-            {
-                continue;
-            }
-
-            if (myDistance < 0)
-            {
-                theCurrentBarPositions[i] -=
-                    std::min(-myDistance, ANIMATION_SPEED);
-            }
-            else
-            {
-                theCurrentBarPositions[i] +=
-                    std::min(myDistance, ANIMATION_SPEED);
-            }
-
-            theBarsAnimating[i] =
-                (theCurrentBarPositions[i] != theNextPositions[i]);
-        }
-    }
-
     void smoothNextPositions()
     {
         for (size_t i{0}; i < NUM_BARS; ++i)
@@ -138,9 +111,10 @@ public:
         theUpdateQueue.pop();
 
         smoothNextPositions();
-        updateBarPositions();
 
-        while (animating())
+        theBarsAnimating.set();
+
+        while (theBarsAnimating.any())
         {
             std::chrono::steady_clock::time_point myStartTime{};
             if (theEnableProfiling)
@@ -148,42 +122,57 @@ public:
                 myStartTime = std::chrono::steady_clock::now();
             }
 
-            auto myRowColorIdx{0};
-            for (size_t y{0}; y < NUM_ROWS; y += COLOR_HEIGHT)
+            for (size_t i{0}; i < NUM_BARS; ++i)
             {
-                auto myRowColor{ROW_COLORS[myRowColorIdx]};
-                for (size_t myYOffset{0}; myYOffset < COLOR_HEIGHT; ++myYOffset)
-                {
-                    size_t myBarIdx{0};
-                    for (size_t x{0}; x < NUM_COLS; x += BAR_WIDTH)
-                    {
-                        if ((y + myYOffset) >= theCurrentBarPositions[myBarIdx])
-                        {
-                            for (size_t myXOffset{0}; myXOffset < BAR_WIDTH;
-                                 ++myXOffset)
-                            {
-                                theNextFrameBuffer->SetPixel(
-                                    x + myXOffset, y + myYOffset,
-                                    myRowColor.getRed(), myRowColor.getGreen(),
-                                    myRowColor.getBlue());
-                            }
-                        }
-                        else
-                        {
-                            for (size_t myXOffset{0}; myXOffset < BAR_WIDTH;
-                                 ++myXOffset)
-                            {
-                                theNextFrameBuffer->SetPixel(
-                                    x + myXOffset, y + myYOffset, 0, 0, 0);
-                            }
-                        }
+                int myDistance{static_cast<int>(theNextPositions[i]) -
+                               static_cast<int>(theCurrentBarPositions[i])};
 
-                        ++myBarIdx;
-                    }
+                if (myDistance == 0)
+                {
+                    theBarsAnimating[i] = false;
+                    continue;
                 }
-                ++myRowColorIdx;
+
+                auto myDelta{std::min(std::abs(myDistance), ANIMATION_SPEED)};
+                auto myXStart{i * BAR_WIDTH};
+                auto myXEnd{i * BAR_WIDTH + BAR_WIDTH};
+
+                // Bar is moving up
+                if (myDistance < 0)
+                {
+                    auto myYStart{theCurrentBarPositions[i] - myDelta};
+                    auto myYEnd{theCurrentBarPositions[i]};
+
+                    for (size_t y{myYStart}; y < myYEnd; ++y)
+                    {
+                        for (size_t x{myXStart}; x < myXEnd; ++x)
+                        {
+                            theNextFrameBuffer->SetPixel(
+                                x, y, ROW_COLORS[y].getRed(),
+                                ROW_COLORS[y].getGreen(),
+                                ROW_COLORS[y].getBlue());
+                        }
+                    }
+
+                    theCurrentBarPositions[i] -= myDelta;
+                }
+                // Bar is moving down
+                else
+                {
+                    auto myYStart{theCurrentBarPositions[i]};
+                    auto myYEnd{theCurrentBarPositions[i] + myDelta};
+
+                    for (size_t y{myYStart}; y < myYEnd; ++y)
+                    {
+                        for (size_t x{myXStart}; x < myXEnd; ++x)
+                        {
+                            theNextFrameBuffer->SetPixel(x, y, 0, 0, 0);
+                        }
+                    }
+
+                    theCurrentBarPositions[i] += myDelta;
+                }
             }
-            updateBarPositions();
 
             if (theEnableProfiling)
             {
@@ -201,7 +190,7 @@ public:
                 }
             }
 
-            theNextFrameBuffer = theMatrix->SwapOnVSync(theNextFrameBuffer);
+            theMatrix->SwapOnVSync(theNextFrameBuffer);
         }
     }
 };
