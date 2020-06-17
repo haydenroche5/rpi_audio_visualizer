@@ -74,7 +74,7 @@ public:
                              (1 - std::cos((2 * M_PI * i) / theBufferSize));
         }
 
-        // Take the Fourier transform of the samples.
+        // Take the (fast) Fourier transform of the samples.
         fftwpp::rcfft1d myFft(theBufferSize, theFftInput, theFftOutput);
         myFft.fft(theFftInput, theFftOutput);
 
@@ -86,8 +86,6 @@ public:
         {
             auto myFrequency{i * theFftFundamentalFreq};
 
-            // TODO: Try some measure of the power in each octave
-            // instead of max magnitude
             if (myFrequency >= OCTAVE_BOUNDARIES[myOctaveBoundaryIdx])
             {
                 theMaxMagnitudePerOctave[myOctaveBoundaryIdx] = myMaxMagnitude;
