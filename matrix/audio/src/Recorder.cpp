@@ -6,9 +6,11 @@ namespace matrix
 {
 namespace audio
 {
-Recorder::Recorder(AudioQueueT &aQueue, bool aIsStreamingMode,
-                   size_t aSecondsToRecord, bool aVerbose)
-    : theQueue{aQueue}, theIsStreamingMode{aIsStreamingMode},
+Recorder::Recorder(AudioQueueT &aQueue, size_t aBufferSize,
+                   bool aIsStreamingMode, size_t aSecondsToRecord,
+                   bool aVerbose)
+    : theQueue{aQueue}, theBufferSize{aBufferSize},
+      theCurrentBuffer(aBufferSize, 0), theIsStreamingMode{aIsStreamingMode},
       theSamplesToRecord{aSecondsToRecord * SAMPLE_RATE}, theVerbose{aVerbose}
 {
     if (aSecondsToRecord != 0 && aIsStreamingMode)
@@ -31,9 +33,9 @@ int Recorder::paCallbackFun(const void *aInputBuffer, void *,
         return paComplete;
     }
 
-    std::memcpy(theCurrentBuffer.data(),
-                static_cast<const float *>(aInputBuffer),
-                SAMPLES_PER_BUFFER * sizeof(float));
+    theCurrentBuffer =
+        BufferT(static_cast<const float *>(aInputBuffer),
+                static_cast<const float *>(aInputBuffer) + theBufferSize);
 
     auto myPushSuccess{theQueue.push(theCurrentBuffer)};
 
@@ -52,7 +54,7 @@ int Recorder::paCallbackFun(const void *aInputBuffer, void *,
 
     if (!theIsStreamingMode)
     {
-        theSamplesRecorded += SAMPLES_PER_BUFFER;
+        theSamplesRecorded += theBufferSize;
 
         if (theSamplesRecorded >= theSamplesToRecord)
         {

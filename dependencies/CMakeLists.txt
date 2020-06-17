@@ -1,10 +1,11 @@
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_LIST_DIR}/cmake/modules/)
 
 set(Boost_USE_STATIC_LIBS ON)
-find_package(Boost REQUIRED CONFIG COMPONENTS thread chrono)
+find_package(Boost REQUIRED CONFIG COMPONENTS thread chrono program_options)
 set_target_properties(Boost::headers PROPERTIES IMPORTED_GLOBAL TRUE)
 set_target_properties(Boost::thread PROPERTIES IMPORTED_GLOBAL TRUE)
 set_target_properties(Boost::chrono PROPERTIES IMPORTED_GLOBAL TRUE)
+set_target_properties(Boost::program_options PROPERTIES IMPORTED_GLOBAL TRUE)
 
 find_package(PkgConfig REQUIRED)
 find_package(PortAudio REQUIRED)

@@ -30,9 +30,6 @@ void SampleCollector::stop() { theStop = true; }
 
 bool SampleCollector::isStopped() const { return theStop; }
 
-const SampleCollector::SamplesT &SampleCollector::getSamples() const
-{
-    return theSamples;
-}
+const BufferT &SampleCollector::getSamples() const { return theSamples; }
 } // namespace audio
 } // namespace matrix

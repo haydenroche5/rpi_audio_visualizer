@@ -9,20 +9,17 @@ namespace audio
 {
 class SampleCollector
 {
-public:
-    using SamplesT = std::vector<SampleT>;
-
 private:
     AudioQueueT &theQueue;
     bool theStop{false};
-    SamplesT theSamples{};
+    BufferT theSamples{};
 
 public:
     SampleCollector(AudioQueueT &aQueue, size_t aInitialSize);
     void collect();
     void stop();
     bool isStopped() const;
-    const SamplesT &getSamples() const;
+    const BufferT &getSamples() const;
 };
 } // namespace audio
 } // namespace matrix

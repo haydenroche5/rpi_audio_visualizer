@@ -26,17 +26,28 @@ public:
     {
     }
 
-    ChannelsT getChannels() const;
-    ChannelT getRed() const;
-    ChannelT getGreen() const;
-    ChannelT getBlue() const;
+    ChannelsT getChannels() const { return theChannels; }
 
-    void setChannels(ChannelsT aChannels);
-    void setRed(ChannelT aValue);
-    void setGreen(ChannelT aValue);
-    void setBlue(ChannelT aValue);
+    ChannelT getRed() const { return theChannels[0]; }
 
-    friend std::ostream &operator<<(std::ostream &aStream, const Color &aColor);
+    ChannelT getGreen() const { return theChannels[1]; }
+
+    ChannelT getBlue() const { return theChannels[2]; }
+
+    void setChannels(ChannelsT aChannels) { theChannels = aChannels; }
+
+    void setRed(ChannelT aValue) { theChannels[0] = aValue; }
+
+    void setGreen(ChannelT aValue) { theChannels[1] = aValue; }
+
+    void setBlue(ChannelT aValue) { theChannels[2] = aValue; }
 };
+
+std::ostream &operator<<(std::ostream &aStream, const Color &aColor)
+{
+    aStream << "R: " << +aColor.getRed() << ", G: " << +aColor.getGreen()
+            << ", B: " << +aColor.getBlue();
+    return aStream;
+}
 } // namespace rendering
 } // namespace matrix
