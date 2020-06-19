@@ -34,7 +34,7 @@ float calibrate(AudioQueueT &aAudioQueue, size_t aBufferSize,
                             aBufferSize)};
     size_t mySamplesRecorded{0};
     DspPipeline<NUM_BARS> myDspPipeline{aBufferSize, aPreEmphasisFactor};
-    float myMaxMagnitude{0};
+    float myMaxDb{0};
 
     while (mySamplesRecorded < mySamplesToRecord)
     {
@@ -46,19 +46,21 @@ float calibrate(AudioQueueT &aAudioQueue, size_t aBufferSize,
 
             for (size_t i{0}; i < NUM_BARS; ++i)
             {
-                if (myMaxMagnitudePerOctave[i] > myMaxMagnitude)
+                auto myDb{20 * std::log10(myMaxMagnitudePerOctave[i])};
+
+                if (myDb > myMaxDb)
                 {
-                    myMaxMagnitude = myMaxMagnitudePerOctave[i];
+                    myMaxDb = myDb;
                 }
             }
         }
     }
 
-    return myMaxMagnitude;
+    return myMaxDb;
 }
 
 void updatePositions(AudioQueueT &aAudioQueue, size_t aBufferSize,
-                     float aPreEmphasisFactor, float aMaxMagnitude,
+                     float aPreEmphasisFactor, float aMaxDb,
                      VisualizerUpdateQueueT &aBarUpdateQueue)
 {
     VisualizerBarPositionsT myNewPositions{};
@@ -77,8 +79,12 @@ void updatePositions(AudioQueueT &aAudioQueue, size_t aBufferSize,
             // maximum FFT magnitude in the octave.
             for (size_t i{0}; i < NUM_BARS; ++i)
             {
-                auto myScaledMagnitude{myMaxMagnitudePerOctave[i] /
-                                       aMaxMagnitude};
+                auto myDb{20 * std::log10(myMaxMagnitudePerOctave[i])};
+                if (myDb < 0)
+                {
+                    myDb = 0;
+                }
+                auto myScaledMagnitude{myDb / aMaxDb};
                 auto myNewPosition{
                     (NUM_ROWS - 1) -
                     std::round((NUM_ROWS - 1) * myScaledMagnitude)};
@@ -145,7 +151,7 @@ int main(int argc, char *argv[])
         "buffer-size", po::value<size_t>()->default_value(512),
         "set the size of the audio buffer, which also determines the FFT "
         "length (allowed values: 256, 512, 1024, 2048)")(
-        "pre-emphasis", po::value<float>()->default_value(0.9),
+        "pre-emphasis", po::value<float>()->default_value(0.6),
         "set the pre-emphasis factor");
 
     po::variables_map myVariablesMap;
@@ -208,8 +214,8 @@ int main(int argc, char *argv[])
     myRecorderStream.start();
 
     std::cout << "Calibrating..." << std::endl;
-    auto myMaxMagnitude{calibrate(myAudioQueue, myBufferSize,
-                                  myPreEmphasisFactor, CALIBRATION_SECONDS)};
+    auto myMaxDb{calibrate(myAudioQueue, myBufferSize, myPreEmphasisFactor,
+                           CALIBRATION_SECONDS)};
     std::cout << "Calibration done. Starting visualizer." << std::endl;
 
     VisualizerUpdateQueueT myBarUpdateQueue{FREQ_BAR_UPDATE_QUEUE_DEPTH};
@@ -230,7 +236,7 @@ int main(int argc, char *argv[])
                                      std::ref(myVisualizer));
     boost::thread myPositionUpdateThread(
         updatePositions, std::ref(myAudioQueue), myBufferSize,
-        myPreEmphasisFactor, myMaxMagnitude, std::ref(myBarUpdateQueue));
+        myPreEmphasisFactor, myMaxDb, std::ref(myBarUpdateQueue));
 
     std::cout << "Press 'q' to exit." << std::endl;
 
