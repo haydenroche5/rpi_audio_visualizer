@@ -23,18 +23,42 @@ using namespace matrix::rendering;
 using namespace matrix::audio;
 namespace po = boost::program_options;
 
-constexpr float MIN_MAGNITUDE{0};
-constexpr float MAX_MAGNITUDE{5};
-
 std::atomic<bool> Terminate{false};
 
-void calibrate(AudioQueueT &aAudioQueue, size_t aBufferSize,
-               float aPreEmphasisFactor)
+float calibrate(AudioQueueT &aAudioQueue, size_t aBufferSize,
+                float aPreEmphasisFactor, size_t aCalibrationSeconds)
 {
+    auto mySamplesToRecord{
+        static_cast<size_t>(std::ceil((aCalibrationSeconds * SAMPLE_RATE) /
+                                      static_cast<float>(aBufferSize)) *
+                            aBufferSize)};
+    size_t mySamplesRecorded{0};
+    DspPipeline<NUM_BARS> myDspPipeline{aBufferSize, aPreEmphasisFactor};
+    float myMaxMagnitude{0};
+
+    while (mySamplesRecorded < mySamplesToRecord)
+    {
+        if (aAudioQueue.read_available() > 0)
+        {
+            mySamplesRecorded += aBufferSize;
+            auto myMaxMagnitudePerOctave{myDspPipeline(aAudioQueue.front())};
+            aAudioQueue.pop();
+
+            for (size_t i{0}; i < NUM_BARS; ++i)
+            {
+                if (myMaxMagnitudePerOctave[i] > myMaxMagnitude)
+                {
+                    myMaxMagnitude = myMaxMagnitudePerOctave[i];
+                }
+            }
+        }
+    }
+
+    return myMaxMagnitude;
 }
 
 void updatePositions(AudioQueueT &aAudioQueue, size_t aBufferSize,
-                     float aPreEmphasisFactor,
+                     float aPreEmphasisFactor, float aMaxMagnitude,
                      VisualizerUpdateQueueT &aBarUpdateQueue)
 {
     VisualizerBarPositionsT myNewPositions{};
@@ -53,15 +77,8 @@ void updatePositions(AudioQueueT &aAudioQueue, size_t aBufferSize,
             // maximum FFT magnitude in the octave.
             for (size_t i{0}; i < NUM_BARS; ++i)
             {
-                // auto myMagnitudeDb{20 *
-                // std::log10(myMaxMagnitudePerOctave[i])}; if
-                // (myMaxMagnitudePerOctave[i] == 0)
-                // {
-                //     myMagnitudeDb = MIN_MAGNITUDE;
-                // }
-                auto myScaledMagnitude{
-                    (myMaxMagnitudePerOctave[i] - MIN_MAGNITUDE) /
-                    (MAX_MAGNITUDE - MIN_MAGNITUDE)};
+                auto myScaledMagnitude{myMaxMagnitudePerOctave[i] /
+                                       aMaxMagnitude};
                 auto myNewPosition{
                     (NUM_ROWS - 1) -
                     std::round((NUM_ROWS - 1) * myScaledMagnitude)};
@@ -69,13 +86,7 @@ void updatePositions(AudioQueueT &aAudioQueue, size_t aBufferSize,
                 myNewPositions[i] = myNewPosition;
             }
 
-            auto myUpdateSuccess{aBarUpdateQueue.push(myNewPositions)};
-
-            // if (!myUpdateSuccess)
-            // {
-            //     std::cout << "Failed to update bar positions." <<
-            //     std::endl;
-            // }
+            aBarUpdateQueue.push(myNewPositions);
         }
     }
 }
@@ -127,16 +138,15 @@ void validateCommandLineArgs(const po::variables_map &aVariablesMap)
 int main(int argc, char *argv[])
 {
     po::options_description myOptionsDesc("Allowed options");
-    // clang-format off
     myOptionsDesc.add_options()("help", "produce help message")(
         "speed", po::value<int>()->default_value(8),
         "set the visualizer's animation speed "
         "(must be a power of 2 in range [2, 64])")(
         "buffer-size", po::value<size_t>()->default_value(512),
-        "set the size of the audio buffer, which also determines the FFT length (allowed values: 256, 512, 1024, 2048)")(
+        "set the size of the audio buffer, which also determines the FFT "
+        "length (allowed values: 256, 512, 1024, 2048)")(
         "pre-emphasis", po::value<float>()->default_value(0.9),
         "set the pre-emphasis factor");
-    // clang-format on
 
     po::variables_map myVariablesMap;
     po::store(po::parse_command_line(argc, argv, myOptionsDesc),
@@ -191,17 +201,16 @@ int main(int argc, char *argv[])
 
     AudioQueueT myAudioQueue{AUDIO_QUEUE_DEPTH};
     constexpr bool IS_STREAMING_MODE{true};
-    // constexpr size_t CALIBRATION_SECONDS{5};
+    constexpr size_t CALIBRATION_SECONDS{5};
     Recorder myRecorder{myAudioQueue, myBufferSize, IS_STREAMING_MODE};
     RecorderStream myRecorderStream{myRecorder, myStreamParams};
 
-    // boost::thread myCalibrationThread(calibrate, std::ref(myAudioQueue),
-    //                                   myBufferSize, myPreEmphasisFactor);
-    // myRecorderStream.start();
+    myRecorderStream.start();
 
-    // while (!myRecorder.isDoneRecording())
-    // {
-    // }
+    std::cout << "Calibrating..." << std::endl;
+    auto myMaxMagnitude{calibrate(myAudioQueue, myBufferSize,
+                                  myPreEmphasisFactor, CALIBRATION_SECONDS)};
+    std::cout << "Calibration done. Starting visualizer." << std::endl;
 
     VisualizerUpdateQueueT myBarUpdateQueue{FREQ_BAR_UPDATE_QUEUE_DEPTH};
     using VisualizerT = Visualizer<NUM_BARS>;
@@ -221,11 +230,9 @@ int main(int argc, char *argv[])
                                      std::ref(myVisualizer));
     boost::thread myPositionUpdateThread(
         updatePositions, std::ref(myAudioQueue), myBufferSize,
-        myPreEmphasisFactor, std::ref(myBarUpdateQueue));
+        myPreEmphasisFactor, myMaxMagnitude, std::ref(myBarUpdateQueue));
 
-    myRecorderStream.start();
-
-    std::cout << "Press 'q' to exit and reset LEDs" << std::endl;
+    std::cout << "Press 'q' to exit." << std::endl;
 
     while (!Terminate)
     {
@@ -236,8 +243,6 @@ int main(int argc, char *argv[])
             Terminate = true;
         }
     }
-
-    std::cout << "Done." << std::endl;
 
     myVisualizerThread.join();
     myPositionUpdateThread.join();
