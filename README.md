@@ -17,7 +17,7 @@ Visualize the spectrum of an audio stream in real time.
 - [FFTW](http://www.fftw.org/) and [FFTW++](http://fftwpp.sourceforge.net/)
 - [rpi-rgb-led-matrix](https://github.com/hzeller/rpi-rgb-led-matrix)
 
-## Building
+## Building and running
 - Run `cmake .` from the root of the project.
 - Change directories to `bin/` and run `make visualizer`.
 - Run `build/visualizer` with sudo. Command line options:
@@ -31,3 +31,5 @@ Allowed options:
                                     values: 256, 512, 1024, 2048)
   --pre-emphasis arg (=0.899999976) set the pre-emphasis factor
 ```
+## Examples
+Check out `video_examples/` to see the visualizer in action.
