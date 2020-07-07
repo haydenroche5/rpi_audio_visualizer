@@ -139,20 +139,30 @@ void validateCommandLineArgs(const po::variables_map &aVariablesMap)
         throw std::invalid_argument{
             "Pre-emphasis factor must be in the range [0, 1]."};
     }
+
+    auto mySmoothingFactor{aVariablesMap["smoothing"].as<float>()};
+
+    if (mySmoothingFactor < 0.0 || mySmoothingFactor > 1.0)
+    {
+        throw std::invalid_argument{
+            "Smoothing factor must be in the range [0, 1]."};
+    }
 }
 
 int main(int argc, char *argv[])
 {
     po::options_description myOptionsDesc("Allowed options");
     myOptionsDesc.add_options()("help", "produce help message")(
-        "speed", po::value<int>()->default_value(8),
+        "speed", po::value<int>()->default_value(4),
         "set the visualizer's animation speed "
         "(must be a power of 2 in range [2, 64])")(
         "buffer-size", po::value<size_t>()->default_value(512),
         "set the size of the audio buffer, which also determines the FFT "
         "length (allowed values: 256, 512, 1024, 2048)")(
-        "pre-emphasis", po::value<float>()->default_value(0.6),
-        "set the pre-emphasis factor");
+        "pre-emphasis", po::value<float>()->default_value(0.9),
+        "set the pre-emphasis factor")("smoothing",
+                                       po::value<float>()->default_value(0.6),
+                                       "set the smoothing factor");
 
     po::variables_map myVariablesMap;
     po::store(po::parse_command_line(argc, argv, myOptionsDesc),
@@ -170,6 +180,7 @@ int main(int argc, char *argv[])
     auto myBufferSize{myVariablesMap["buffer-size"].as<size_t>()};
     auto myAnimationSpeed{myVariablesMap["speed"].as<int>()};
     auto myPreEmphasisFactor{myVariablesMap["pre-emphasis"].as<float>()};
+    auto mySmoothingFactor{myVariablesMap["smoothing"].as<float>()};
 
     portaudio::AutoSystem autoSys;
     portaudio::System &mySystem{portaudio::System::instance()};
@@ -228,9 +239,9 @@ int main(int argc, char *argv[])
     myMatrixOptions.cols = NUM_COLS;
     rgb_matrix::RuntimeOptions myRuntimeOptions{};
 
-    VisualizerT myVisualizer{myMatrixOptions, myRuntimeOptions,
-                             myBarUpdateQueue, myAnimationSpeed,
-                             ENABLE_PROFILING};
+    VisualizerT myVisualizer{myMatrixOptions,   myRuntimeOptions,
+                             myBarUpdateQueue,  myAnimationSpeed,
+                             mySmoothingFactor, ENABLE_PROFILING};
 
     boost::thread myVisualizerThread(animate<VisualizerT>,
                                      std::ref(myVisualizer));

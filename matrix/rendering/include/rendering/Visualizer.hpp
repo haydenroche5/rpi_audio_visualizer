@@ -25,12 +25,10 @@ namespace matrix
 {
 namespace rendering
 {
-// TODO: Border on each side of visualizer
 template <size_t NUM_BARS> class Visualizer
 {
     static constexpr size_t NUM_GRADIENTS{4};
     static constexpr size_t NUM_COLORS_PER_GRADIENT{16};
-    static constexpr float SMOOTHING_FACTOR{0.6};
 
     static_assert((NUM_COLS % NUM_BARS == 0) ||
                       ((NUM_COLS % NUM_BARS) & ((NUM_COLS % NUM_BARS) - 1)) ==
@@ -51,6 +49,7 @@ private:
     FrameBufferT *theNextFrameBuffer{nullptr};
     std::bitset<NUM_BARS> theBarsAnimating{};
     int theAnimationSpeed;
+    float theSmoothingFactor;
     bool theEnableProfiling;
     std::chrono::microseconds theWortCaseDuration{
         std::chrono::microseconds::min()};
@@ -59,11 +58,12 @@ public:
     Visualizer(rgb_matrix::RGBMatrix::Options aMatrixOptions,
                rgb_matrix::RuntimeOptions aRuntimeOptions,
                VisualizerUpdateQueueT &aUpdateQueue, int aAnimationSpeed,
-               bool aEnableProfiling = false)
+               float aSmoothingFactor, bool aEnableProfiling = false)
         : theMatrix{rgb_matrix::CreateMatrixFromOptions(aMatrixOptions,
                                                         aRuntimeOptions)},
           theUpdateQueue{aUpdateQueue}, theAnimationSpeed{aAnimationSpeed},
-          theEnableProfiling{aEnableProfiling}
+          theSmoothingFactor{aSmoothingFactor}, theEnableProfiling{
+                                                    aEnableProfiling}
     {
         if (theMatrix == nullptr)
         {
@@ -100,8 +100,9 @@ public:
     {
         for (size_t i{0}; i < NUM_BARS; ++i)
         {
-            theNextPositions[i] = theCurrentBarPositions[i] * SMOOTHING_FACTOR +
-                                  theNextPositions[i] * (1 - SMOOTHING_FACTOR);
+            theNextPositions[i] =
+                theCurrentBarPositions[i] * theSmoothingFactor +
+                theNextPositions[i] * (1 - theSmoothingFactor);
         }
     }
 
